@@ -295,21 +295,18 @@ body::before {
   background: var(--primary-bg);
 }
 .app-tab-label { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; }
-/* 中间添加按钮（整合到导航栏内部，文字样式） */
+/* 中间添加按钮（和其他tab统一风格，图标突出） */
 .app-tab-add {
-  min-width: 64px; height: 40px; padding: 0 16px; border-radius: 20px; border: none;
-  background: var(--primary-gradient); color: #fff; cursor: pointer;
-  display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  flex-shrink: 0; z-index: 2;
-  margin: 0 4px;
+  color: var(--primary);
 }
-.app-tab-add-text {
-  font-size: 14px; font-weight: 700; letter-spacing: 1px; white-space: nowrap;
+.app-tab-add .app-tab-icon {
+  background: var(--primary-gradient);
+  color: #fff;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.35);
 }
-.app-tab-add:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(16, 185, 129, 0.5); }
-.app-tab-add:active { transform: scale(0.95); }
+.app-tab-add:hover { color: var(--primary); }
+.app-tab-add:hover .app-tab-icon { transform: translateY(-2px) scale(1.1); box-shadow: 0 6px 16px rgba(16, 185, 129, 0.45); }
+.app-tab-add:active .app-tab-icon { transform: scale(0.95); }
 
 /* ===== 搜索 Tab ===== */
 .search-tab-section { margin-bottom: 28px; }
@@ -702,8 +699,6 @@ body::before {
   .app-empty { padding: 50px 16px; }
   .app-empty-icon { width: 84px; height: 84px; }
   .app-tabbar-inner { margin: 0 12px 10px; height: 64px; border-radius: 22px; padding: 0 8px; }
-  .app-tab-add { min-width: 56px; height: 36px; padding: 0 12px; }
-  .app-tab-add-text { font-size: 13px; }
 }
 
 @media (max-width: 360px) {
