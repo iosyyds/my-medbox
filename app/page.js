@@ -128,6 +128,35 @@ export default function Home() {
     };
   }, []);
 
+  // 弹窗打开时锁定背景滚动
+  const anyModalOpen = showAddModal || showDetailModal || showSettingsModal || showAiModal || showCameraModal || showImagePreview;
+  useEffect(() => {
+    if (anyModalOpen) {
+      const scrollY = window.scrollY;
+      document.body.style.position = 'fixed';
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.left = '0';
+      document.body.style.right = '0';
+      document.body.style.overflow = 'hidden';
+      document.body.dataset.scrollY = scrollY;
+    } else {
+      const scrollY = document.body.dataset.scrollY || 0;
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.overflow = '';
+      if (scrollY) window.scrollTo(0, parseInt(scrollY));
+    }
+    return () => {
+      document.body.style.position = '';
+      document.body.style.top = '';
+      document.body.style.left = '';
+      document.body.style.right = '';
+      document.body.style.overflow = '';
+    };
+  }, [anyModalOpen]);
+
   const showToast = useCallback((message, type = '') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type: '' }), 2500);
@@ -765,16 +794,17 @@ export default function Home() {
             <div className="app-tab-icon"><SearchIcon size={22} /></div>
             <span className="app-tab-label">搜索</span>
           </button>
-          <button className="app-tab app-tab-add" onClick={openAddModal}>
-            <div className="app-tab-icon"><PlusIcon size={22} /></div>
-            <span className="app-tab-label">添加</span>
-          </button>
           <button className={`app-tab ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
             <div className="app-tab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
             <span className="app-tab-label">设置</span>
           </button>
         </div>
       </nav>
+
+      {/* 悬浮添加按钮 */}
+      <button className="fab-add" onClick={openAddModal} title="添加药品">
+        <PlusIcon size={26} />
+      </button>
 
       {/* 添加/编辑弹窗 */}
       {showAddModal && (
