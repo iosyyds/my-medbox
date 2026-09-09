@@ -64,6 +64,10 @@ export default function Home() {
   const [aiConfig, setAiConfig] = useState({ apiKey: '', enabled: false });
   const [aiConfigDraft, setAiConfigDraft] = useState({ apiKey: '', enabled: false });
   const [activeTab, setActiveTab] = useState('home');
+  const [syncToken, setSyncToken] = useState('');
+  const [syncTokenDraft, setSyncTokenDraft] = useState('');
+  const [syncing, setSyncing] = useState(false);
+  const [lastSyncTime, setLastSyncTime] = useState('');
 
   const [formData, setFormData] = useState({
     name: '', type: 'otc', expireDate: '', effect: '', usage: '',
@@ -173,6 +177,95 @@ export default function Home() {
     saveAIConfig(cfg);
     setAiConfig(cfg);
     showToast(cfg.enabled ? '智谱 AI 识别已启用' : 'AI 识别已关闭', 'success');
+  };
+
+  // ===== 数据同步功能 =====
+  const SYNC_API_URL = 'https://yao1.hugv.me/api/sync.php';
+  const SYNC_TOKEN_KEY = 'medbox_sync_token';
+  const SYNC_TIME_KEY = 'medbox_last_sync';
+
+  // 加载同步配置
+  useEffect(() => {
+    const savedToken = localStorage.getItem(SYNC_TOKEN_KEY);
+    const savedTime = localStorage.getItem(SYNC_TIME_KEY);
+    if (savedToken) {
+      setSyncToken(savedToken);
+      setSyncTokenDraft(savedToken);
+    }
+    if (savedTime) setLastSyncTime(savedTime);
+  }, []);
+
+  // 保存同步密钥
+  const handleSaveSyncToken = () => {
+    const token = syncTokenDraft.trim();
+    if (!token) {
+      showToast('请输入同步密钥', 'error');
+      return;
+    }
+    localStorage.setItem(SYNC_TOKEN_KEY, token);
+    setSyncToken(token);
+    showToast('同步密钥已保存', 'success');
+  };
+
+  // 上传数据到服务器
+  const handleSyncUpload = async () => {
+    if (!syncToken) {
+      showToast('请先保存同步密钥', 'error');
+      return;
+    }
+    setSyncing(true);
+    try {
+      const response = await fetch(SYNC_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: syncToken, medicines: medicines }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        const now = new Date().toLocaleString('zh-CN');
+        localStorage.setItem(SYNC_TIME_KEY, now);
+        setLastSyncTime(now);
+        showToast(`上传成功，共 ${data.count} 条药品`, 'success');
+      } else {
+        showToast('上传失败：' + (data.error || '未知错误'), 'error');
+      }
+    } catch (err) {
+      showToast('上传失败：网络错误，请检查服务器', 'error');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // 从服务器拉取数据
+  const handleSyncDownload = async () => {
+    if (!syncToken) {
+      showToast('请先保存同步密钥', 'error');
+      return;
+    }
+    if (!confirm('拉取数据会覆盖本地当前数据，确定继续吗？')) return;
+    setSyncing(true);
+    try {
+      const response = await fetch(`${SYNC_API_URL}?token=${encodeURIComponent(syncToken)}`);
+      const data = await response.json();
+      if (data.success) {
+        if (data.medicines && data.medicines.length > 0) {
+          saveMedicines(data.medicines);
+          setMedicines(data.medicines);
+          const now = new Date().toLocaleString('zh-CN');
+          localStorage.setItem(SYNC_TIME_KEY, now);
+          setLastSyncTime(now);
+          showToast(`拉取成功，共 ${data.medicines.length} 条药品`, 'success');
+        } else {
+          showToast('服务器暂无数据', '');
+        }
+      } else {
+        showToast('拉取失败：' + (data.error || '未知错误'), 'error');
+      }
+    } catch (err) {
+      showToast('拉取失败：网络错误，请检查服务器', 'error');
+    } finally {
+      setSyncing(false);
+    }
   };
 
   const stats = useMemo(() => getStats(medicines), [medicines]);
@@ -605,6 +698,36 @@ export default function Home() {
                   </div>
                 )}
                 {!aiConfigDraft.enabled && (<p className="settings-ai-hint">AI 已内置默认 Key，启用后拍照将直接调用智谱 GLM-4V 识别药品信息（名称、功效、用法、保质期等），所有设备通用。</p>)}
+              </div>
+            </div>
+
+            {/* 数据同步 */}
+            <div className="settings-group">
+              <h3 className="settings-group-title">云端数据同步</h3>
+              <div className="settings-ai-card">
+                <div className="settings-ai-header">
+                  <div className="settings-ai-status">
+                    <span className={`settings-ai-dot ${syncToken ? 'active' : ''}`}></span>
+                    <span className="settings-ai-status-text">{syncToken ? '已配置同步密钥' : '未配置'}</span>
+                  </div>
+                  {lastSyncTime && <span style={{ fontSize: 11, color: 'var(--text-light)' }}>上次同步：{lastSyncTime}</span>}
+                </div>
+                <div className="settings-ai-body">
+                  <div className="form-group">
+                    <label className="form-label">同步密钥（所有设备用同一个密钥才能同步）</label>
+                    <input type="text" className="form-input" placeholder="如：my-medbox-2024" value={syncTokenDraft} onChange={(e) => setSyncTokenDraft(e.target.value)} />
+                    <p className="form-hint">自己设置一个密钥，手机和电脑用同一个密钥，就能跨设备同步药品数据</p>
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+                    <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={handleSaveSyncToken} disabled={syncing}>保存密钥</button>
+                    <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={handleSyncUpload} disabled={syncing || !syncToken}>
+                      {syncing ? '同步中…' : '↑ 上传到云端'}
+                    </button>
+                    <button className="btn btn-primary btn-sm" style={{ flex: 1, background: 'var(--purple-gradient)' }} onClick={handleSyncDownload} disabled={syncing || !syncToken}>
+                      {syncing ? '同步中…' : '↓ 从云端拉取'}
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
 
