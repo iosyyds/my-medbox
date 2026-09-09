@@ -283,23 +283,24 @@ body::before {
 }
 .app-tabbar-inner {
   max-width: 720px; margin: 0 auto; height: 68px;
-  display: flex; align-items: center; justify-content: center;
-  background: rgba(255, 255, 255, 0.92);
+  display: flex; align-items: center; justify-content: space-around;
+  background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-top: 1px solid rgba(0, 0, 0, 0.05);
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.08);
   margin: 0 16px 12px;
   border-radius: 24px;
   pointer-events: auto;
   position: relative;
-  padding: 0 8px;
+  padding: 0 12px;
+  gap: 4px;
 }
 .app-tab {
   flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
   gap: 4px; padding: 8px 4px; cursor: pointer; background: none; border: none;
   color: var(--text-light); transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  position: relative; z-index: 1; border-radius: 16px;
+  position: relative; z-index: 1; border-radius: 16px; min-width: 0;
 }
 .app-tab:hover { color: var(--text-secondary); }
 .app-tab.active { color: var(--primary); }
@@ -309,23 +310,22 @@ body::before {
   border-radius: 12px;
 }
 .app-tab.active .app-tab-icon {
-  transform: translateY(-3px) scale(1.1);
+  transform: translateY(-2px) scale(1.1);
   background: var(--primary-bg);
 }
 .app-tab-label { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; }
-.app-tab-spacer { flex: 1; }
-/* 中间凸起添加按钮 */
-.app-fab-center {
-  position: absolute; left: 50%; top: -24px; transform: translateX(-50%);
-  width: 60px; height: 60px; border-radius: 50%; border: 4px solid #fff;
+/* 中间添加按钮（整合到导航栏内部） */
+.app-tab-add {
+  width: 52px; height: 52px; border-radius: 50%; border: 3px solid #fff;
   background: var(--primary-gradient); color: #fff; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 8px 24px rgba(16, 185, 129, 0.5);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 10;
-  pointer-events: auto;
+  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  flex-shrink: 0; z-index: 2;
+  margin: 0 4px;
 }
-.app-fab-center:hover { transform: translateX(-50%) translateY(-5px) scale(1.08); box-shadow: 0 12px 32px rgba(16, 185, 129, 0.6); }
-.app-fab-center:active { transform: translateX(-50%) scale(0.92); }
+.app-tab-add:hover { transform: translateY(-4px) scale(1.08); box-shadow: 0 10px 28px rgba(16, 185, 129, 0.55); }
+.app-tab-add:active { transform: scale(0.92); }
 
 /* ===== 搜索 Tab ===== */
 .search-tab-section { margin-bottom: 28px; }
@@ -446,7 +446,7 @@ body::before {
 .modal-body { overflow-x: hidden !important; touch-action: pan-y; }
 .modal img { -webkit-user-drag: none; user-drag: none; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; pointer-events: none; }
 .modal * { -webkit-touch-callout: none; }
-.modal input, .modal textarea, .modal select { -webkit-touch-callout: default; touch-action: auto; }
+.modal input, .modal textarea, .modal select { -webkit-touch-callout: default; touch-action: pan-y; }
 .modal-header {
   display: flex; align-items: center; justify-content: space-between; padding: 20px;
   border-bottom: 1px solid var(--border-light); position: sticky; top: 0; background: var(--card); z-index: 10;
@@ -718,8 +718,8 @@ body::before {
   .detail-name { font-size: 20px; }
   .app-empty { padding: 50px 16px; }
   .app-empty-icon { width: 84px; height: 84px; }
-  .app-tabbar-inner { margin: 0 12px 10px; height: 64px; border-radius: 22px; }
-  .app-fab-center { width: 56px; height: 56px; top: -22px; }
+  .app-tabbar-inner { margin: 0 12px 10px; height: 64px; border-radius: 22px; padding: 0 8px; }
+  .app-tab-add { width: 48px; height: 48px; }
 }
 
 @media (max-width: 360px) {
