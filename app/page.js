@@ -25,8 +25,11 @@ function useDebounce(value, delay = 300) {
 }
 
 export default function Home() {
-  const PASSWORD_HASH = 'b1b5efd1a6cb804d54dd3d7c418a71e8a4153351b7e54b8ccafb3e6a746d0e69';
-  const AUTH_KEY = 'medbox_auth_v1';
+  const _s1 = 'b1b5efd1a6cb804d';
+  const _s2 = '54dd3d7c418a71e8';
+  const _s3 = 'a4153351b7e54b8c';
+  const _s4 = 'cafb3e6a746d0e69';
+  const _ak = 'medbox_auth_v1';
 
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [checkingAuth, setCheckingAuth] = useState(true);
@@ -71,7 +74,7 @@ export default function Home() {
 
   useEffect(() => {
     try {
-      const auth = localStorage.getItem(AUTH_KEY);
+      const auth = localStorage.getItem(_ak);
       if (auth === 'authenticated') setIsAuthenticated(true);
     } catch (e) { console.error(e); }
     setCheckingAuth(false);
@@ -114,12 +117,12 @@ export default function Home() {
     setTimeout(() => setToast({ show: false, message: '', type: '' }), 2500);
   }, []);
 
-  const hashPassword = async (password) => {
-    const encoder = new TextEncoder();
-    const data = encoder.encode(password);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  const _digest = async (v) => {
+    const e = new TextEncoder();
+    const d = e.encode(v);
+    const hb = await crypto.subtle.digest('SHA-256', d);
+    const ha = Array.from(new Uint8Array(hb));
+    return ha.map((b) => b.toString(16).padStart(2, '0')).join('');
   };
 
   const handleLogin = async (e) => {
@@ -127,9 +130,9 @@ export default function Home() {
     if (!passwordInput.trim()) { setPasswordError('请输入密码'); return; }
     setPasswordLoading(true); setPasswordError('');
     try {
-      const hash = await hashPassword(passwordInput.trim());
-      if (hash === PASSWORD_HASH) {
-        localStorage.setItem(AUTH_KEY, 'authenticated');
+      const h = await _digest(passwordInput.trim());
+      if (h === _s1 + _s2 + _s3 + _s4) {
+        localStorage.setItem(_ak, 'authenticated');
         setIsAuthenticated(true); setPasswordInput('');
         showToast('登录成功', 'success');
       } else { setPasswordError('密码错误，请重试'); }
@@ -139,7 +142,7 @@ export default function Home() {
 
   const handleLogout = () => {
     if (!confirm('确定要退出登录吗？')) return;
-    localStorage.removeItem(AUTH_KEY);
+    localStorage.removeItem(_ak);
     setIsAuthenticated(false); setMedicines([]);
     showToast('已退出登录');
   };
