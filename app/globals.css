@@ -465,15 +465,14 @@ img { max-width: 100%; display: block; }
   color: var(--primary-light);
 }
 .app-med-badge {
-  position: absolute;
-  top: 5px;
-  right: 5px;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 800;
-  padding: 2px 6px;
+  padding: 3px 8px;
   border-radius: var(--radius-full);
   color: #fff;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+  flex-shrink: 0;
+  letter-spacing: 0.3px;
 }
 .app-med-badge.good { background: linear-gradient(135deg, #10b981, #34d399); }
 .app-med-badge.expiring { background: linear-gradient(135deg, #f59e0b, #fbbf24); }

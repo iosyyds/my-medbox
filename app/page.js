@@ -63,8 +63,6 @@ export default function Home() {
   const [aiConfig, setAiConfig] = useState({ apiKey: '', enabled: false });
   const [aiConfigDraft, setAiConfigDraft] = useState({ apiKey: '', enabled: false });
   const [activeTab, setActiveTab] = useState('home');
-  const [syncToken, setSyncToken] = useState('');
-  const [syncTokenDraft, setSyncTokenDraft] = useState('');
   const [syncing, setSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState('');
 
@@ -93,23 +91,19 @@ export default function Home() {
       const cfg = getAIConfig();
       setAiConfig(cfg);
       setAiConfigDraft({ apiKey: cfg.isDefault ? '' : cfg.apiKey, enabled: cfg.enabled });
-      // 自动同步拉取（仅本地为空时覆盖）
-      const token = localStorage.getItem(SYNC_TOKEN_KEY);
-      if (token) {
-        setSyncToken(token);
-        fetch(`${SYNC_API_URL}?token=${encodeURIComponent(token)}`)
-          .then(r => r.json())
-          .then(data => {
-            if (data.success && data.medicines && data.medicines.length > 0 && localMeds.length === 0) {
-              saveMedicines(data.medicines);
-              setMedicines(data.medicines);
-            }
-            const now = new Date().toLocaleString('zh-CN');
-            localStorage.setItem(SYNC_TIME_KEY, now);
-            setLastSyncTime(now);
-          })
-          .catch(() => {});
-      }
+      // 全自动全局同步拉取（仅本地为空时覆盖）
+      fetch(`${SYNC_API_URL}?token=${encodeURIComponent(GLOBAL_SYNC_TOKEN)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && data.medicines && data.medicines.length > 0 && localMeds.length === 0) {
+            saveMedicines(data.medicines);
+            setMedicines(data.medicines);
+          }
+          const now = new Date().toLocaleString('zh-CN');
+          localStorage.setItem(SYNC_TIME_KEY, now);
+          setLastSyncTime(now);
+        })
+        .catch(() => {});
     }
   }, [isAuthenticated]);
 
@@ -225,126 +219,28 @@ export default function Home() {
     showToast(cfg.enabled ? '智谱 AI 识别已启用' : 'AI 识别已关闭', 'success');
   };
 
-  // ===== 数据同步功能 =====
+  // ===== 全自动全局数据同步（无需密钥，所有设备同步同一份数据） =====
   const SYNC_API_URL = 'https://yao1.hugv.me/api/sync.php';
-  const SYNC_TOKEN_KEY = 'medbox_sync_token';
+  const GLOBAL_SYNC_TOKEN = 'medbox-global-all-devices-v1';
   const SYNC_TIME_KEY = 'medbox_last_sync';
 
-  // 加载同步配置
+  // 加载上次同步时间
   useEffect(() => {
-    const savedToken = localStorage.getItem(SYNC_TOKEN_KEY);
     const savedTime = localStorage.getItem(SYNC_TIME_KEY);
-    if (savedToken) {
-      setSyncToken(savedToken);
-      setSyncTokenDraft(savedToken);
-    }
     if (savedTime) setLastSyncTime(savedTime);
   }, []);
 
-  // 保存同步密钥
-  const handleSaveSyncToken = () => {
-    const token = syncTokenDraft.trim();
-    if (!token) {
-      showToast('请输入同步密钥', 'error');
-      return;
-    }
-    localStorage.setItem(SYNC_TOKEN_KEY, token);
-    setSyncToken(token);
-    showToast('同步密钥已保存', 'success');
-  };
-
-  // 上传数据到服务器
-  const handleSyncUpload = async () => {
-    if (!syncToken) {
-      showToast('请先保存同步密钥', 'error');
-      return;
-    }
-    setSyncing(true);
-    try {
-      const response = await fetch(SYNC_API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: syncToken, medicines: medicines }),
-      });
-      const data = await response.json();
-      if (data.success) {
-        const now = new Date().toLocaleString('zh-CN');
-        localStorage.setItem(SYNC_TIME_KEY, now);
-        setLastSyncTime(now);
-        showToast(`上传成功，共 ${data.count} 条药品`, 'success');
-      } else {
-        showToast('上传失败：' + (data.error || '未知错误'), 'error');
-      }
-    } catch (err) {
-      showToast('上传失败：网络错误，请检查服务器', 'error');
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  // 从服务器拉取数据
-  const handleSyncDownload = async () => {
-    if (!syncToken) {
-      showToast('请先保存同步密钥', 'error');
-      return;
-    }
-    if (!confirm('拉取数据会覆盖本地当前数据，确定继续吗？')) return;
-    setSyncing(true);
-    try {
-      const response = await fetch(`${SYNC_API_URL}?token=${encodeURIComponent(syncToken)}`);
-      const data = await response.json();
-      if (data.success) {
-        if (data.medicines && data.medicines.length > 0) {
-          saveMedicines(data.medicines);
-          setMedicines(data.medicines);
-          const now = new Date().toLocaleString('zh-CN');
-          localStorage.setItem(SYNC_TIME_KEY, now);
-          setLastSyncTime(now);
-          showToast(`拉取成功，共 ${data.medicines.length} 条药品`, 'success');
-        } else {
-          showToast('服务器暂无数据', '');
-        }
-      } else {
-        showToast('拉取失败：' + (data.error || '未知错误'), 'error');
-      }
-    } catch (err) {
-      showToast('拉取失败：网络错误，请检查服务器', 'error');
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  // 自动同步上传（静默，不显示toast）
+  // 全自动同步上传（静默，数据变化后自动调用）
   const autoSyncUpload = async (meds) => {
-    if (!syncToken) return;
     try {
       await fetch(SYNC_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token: syncToken, medicines: meds }),
+        body: JSON.stringify({ token: GLOBAL_SYNC_TOKEN, medicines: meds }),
       });
       const now = new Date().toLocaleString('zh-CN');
       localStorage.setItem(SYNC_TIME_KEY, now);
       setLastSyncTime(now);
-    } catch (err) { /* 静默失败 */ }
-  };
-
-  // 自动同步拉取（页面加载时调用，静默）
-  const autoSyncDownload = async () => {
-    if (!syncToken) return;
-    try {
-      const response = await fetch(`${SYNC_API_URL}?token=${encodeURIComponent(syncToken)}`);
-      const data = await response.json();
-      if (data.success && data.medicines && data.medicines.length > 0) {
-        const localEmpty = medicines.length === 0;
-        if (localEmpty) {
-          saveMedicines(data.medicines);
-          setMedicines(data.medicines);
-        }
-        const now = new Date().toLocaleString('zh-CN');
-        localStorage.setItem(SYNC_TIME_KEY, now);
-        setLastSyncTime(now);
-      }
     } catch (err) { /* 静默失败 */ }
   };
 
@@ -514,7 +410,7 @@ export default function Home() {
     setMedicines(newMedicines);
     if (!saveMedicines(newMedicines)) showToast('保存失败，存储空间可能不足', 'error');
     closeAddModal(); resetForm();
-    if (syncToken) autoSyncUpload(newMedicines);
+    autoSyncUpload(newMedicines);
   };
 
   const handleDeleteMed = (med) => {
@@ -522,7 +418,7 @@ export default function Home() {
     const newMedicines = medicines.filter((m) => m.id !== med.id);
     setMedicines(newMedicines); saveMedicines(newMedicines);
     setShowDetailModal(false); showToast('已删除', 'success');
-    if (syncToken) autoSyncUpload(newMedicines);
+    autoSyncUpload(newMedicines);
   };
 
   const handleDeleteExpired = () => {
@@ -531,7 +427,7 @@ export default function Home() {
     const { remaining, deletedCount } = deleteExpired(medicines);
     setMedicines(remaining); saveMedicines(remaining);
     showToast(`已删除 ${deletedCount} 个过期药品`, 'success');
-    if (syncToken) autoSyncUpload(remaining);
+    autoSyncUpload(remaining);
   };
 
   const handleExport = () => {
@@ -622,9 +518,7 @@ export default function Home() {
             </div>
           </div>
           <div className="app-header-right">
-            {syncToken && (
-              <div className="app-header-sync"><span className="dot"></span>已同步</div>
-            )}
+            <div className="app-header-sync"><span className="dot"></span>云同步</div>
             {activeTab !== 'settings' && (
               <button className="app-header-btn" onClick={() => setActiveTab('settings')} title="设置">
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
@@ -709,11 +603,11 @@ export default function Home() {
                     <div key={med.id} className="app-med-card" style={{ animationDelay: `${Math.min(index * 0.04, 0.3)}s` }} onClick={() => { setDetailMed(med); setShowDetailModal(true); }}>
                       <div className="app-med-img">
                         {med.image ? (<img src={med.image} alt={med.name} loading="lazy" />) : (<div className="app-med-img-placeholder"><PillIcon size={32} /></div>)}
-                        {exp.status !== 'unknown' && <span className={`app-med-badge ${exp.class}`}>{exp.label}</span>}
                       </div>
                       <div className="app-med-info">
                         <div className="app-med-name-row">
                           <span className="app-med-name">{med.name}</span>
+                          {exp.status !== 'unknown' && <span className={`app-med-badge ${exp.class}`}>{exp.label}</span>}
                           {med.type === 'rx' && <span className="app-med-rx">Rx</span>}
                         </div>
                         <p className="app-med-effect">{med.effect || '暂无功效描述'}</p>
@@ -815,27 +709,15 @@ export default function Home() {
               <div className="settings-ai-card">
                 <div className="settings-ai-header">
                   <div className="settings-ai-status">
-                    <span className={`settings-ai-dot ${syncToken ? 'active' : ''}`}></span>
-                    <span className="settings-ai-status-text">{syncToken ? '已配置同步密钥' : '未配置'}</span>
+                    <span className="settings-ai-dot active"></span>
+                    <span className="settings-ai-status-text">全自动同步已开启</span>
                   </div>
                   {lastSyncTime && <span style={{ fontSize: 11, color: 'var(--text-light)' }}>上次同步：{lastSyncTime}</span>}
                 </div>
                 <div className="settings-ai-body">
-                  <div className="form-group">
-                    <label className="form-label">同步密钥（所有设备用同一个密钥才能同步）</label>
-                    <input type="text" className="form-input" placeholder="如：my-medbox-2024" value={syncTokenDraft} onChange={(e) => setSyncTokenDraft(e.target.value)} />
-                    <p className="form-hint">自己设置一个密钥，手机和电脑用同一个密钥，添加/修改/删除药品后自动同步，无需手动操作</p>
-                  </div>
-                  <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-                    <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={handleSaveSyncToken} disabled={syncing}>
-                      {syncing ? '保存中…' : syncToken ? '更新密钥' : '保存密钥并开启同步'}
-                    </button>
-                    {syncToken && (
-                      <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => { localStorage.removeItem(SYNC_TOKEN_KEY); setSyncToken(''); setSyncTokenDraft(''); showToast('已关闭同步', 'success'); }}>
-                        关闭同步
-                      </button>
-                    )}
-                  </div>
+                  <p className="form-hint" style={{ fontSize: 13, lineHeight: 1.7 }}>
+                    所有设备自动同步同一份药品数据，无需配置任何密钥。添加、修改、删除药品后自动上传，打开页面自动拉取最新数据。手机和电脑数据实时一致。
+                  </p>
                 </div>
               </div>
             </div>
