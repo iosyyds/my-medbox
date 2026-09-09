@@ -59,6 +59,8 @@ export default function Home() {
   const [recognizeStatus, setRecognizeStatus] = useState('');
   const [recognizedText, setRecognizedText] = useState('');
   const [recognizeError, setRecognizeError] = useState('');
+  const [matchedMedicine, setMatchedMedicine] = useState(null);
+  const [extractedInfo, setExtractedInfo] = useState(null);
 
   // 表单状态
   const [formData, setFormData] = useState({
@@ -81,6 +83,44 @@ export default function Home() {
   // 初始化加载数据
   useEffect(() => {
     setMedicines(loadMedicines());
+  }, []);
+
+  // 强制阻止手机端缩放和横向拖动
+  useEffect(() => {
+    // 阻止 iOS 手势缩放
+    const preventGesture = (e) => e.preventDefault();
+    document.addEventListener('gesturestart', preventGesture);
+    document.addEventListener('gesturechange', preventGesture);
+    document.addEventListener('gestureend', preventGesture);
+
+    // 阻止双指触摸缩放
+    const preventTouchZoom = (e) => {
+      if (e.touches.length > 1) {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener('touchmove', preventTouchZoom, { passive: false });
+    document.addEventListener('touchstart', preventTouchZoom, { passive: false });
+
+    // 阻止双击缩放
+    let lastTouchEnd = 0;
+    const preventDoubleTap = (e) => {
+      const now = Date.now();
+      if (now - lastTouchEnd <= 300) {
+        e.preventDefault();
+      }
+      lastTouchEnd = now;
+    };
+    document.addEventListener('touchend', preventDoubleTap, { passive: false });
+
+    return () => {
+      document.removeEventListener('gesturestart', preventGesture);
+      document.removeEventListener('gesturechange', preventGesture);
+      document.removeEventListener('gestureend', preventGesture);
+      document.removeEventListener('touchmove', preventTouchZoom);
+      document.removeEventListener('touchstart', preventTouchZoom);
+      document.removeEventListener('touchend', preventDoubleTap);
+    };
   }, []);
 
   // Toast提示
@@ -149,6 +189,8 @@ export default function Home() {
     setRecognizedText('');
     setRecognizeError('');
     setRecognizing(false);
+    setMatchedMedicine(null);
+    setExtractedInfo(null);
     setShowAddModal(true);
   };
 
@@ -160,6 +202,8 @@ export default function Home() {
     setRecognizeStatus('');
     setRecognizedText('');
     setRecognizeError('');
+    setMatchedMedicine(null);
+    setExtractedInfo(null);
   };
 
   // 打开编辑弹窗
@@ -199,6 +243,8 @@ export default function Home() {
       setRecognizeStatus('开始识别');
       setRecognizedText('');
       setRecognizeError('');
+      setMatchedMedicine(null);
+      setExtractedInfo(null);
 
       try {
         const result = await recognizeMedicine(compressed, (progress, status) => {
@@ -209,20 +255,19 @@ export default function Home() {
         setRecognizedText(result.text);
 
         if (result.medicine) {
-          const med = result.medicine;
-          setFormData((prev) => ({
-            ...prev,
-            name: prev.name || med.name,
-            type: med.type,
-            effect: prev.effect || med.effect,
-            usage: prev.usage || med.usage,
-            taboo: prev.taboo || med.taboo,
-            factory: prev.factory || med.factory,
-            tags: prev.tags || med.tags.join(', '),
-          }));
-          showToast(`识别成功：${med.name}，信息已自动填充`, 'success');
+          // 匹配到知识库药品，保存但不自动填充，等用户点一键填充
+          setMatchedMedicine(result.medicine);
+          showToast(`识别成功：${result.medicine.name}，点击「一键填充」填入信息`, 'success');
         } else {
-          showToast('识别完成，未匹配到常用药品，可手动填写', '');
+          // 没匹配到知识库，尝试从识别文字中提取信息
+          const { extractInfoFromText } = await import('@/lib/medicineDB');
+          const extracted = extractInfoFromText(result.text);
+          if (extracted) {
+            setExtractedInfo(extracted);
+            showToast('识别完成，未匹配到常用药品，可点击「一键填充」填入识别信息', '');
+          } else {
+            showToast('识别完成，可手动填写信息', '');
+          }
         }
       } catch (err) {
         console.error('识别失败:', err);
@@ -247,6 +292,8 @@ export default function Home() {
     setRecognizeStatus('开始识别');
     setRecognizedText('');
     setRecognizeError('');
+    setMatchedMedicine(null);
+    setExtractedInfo(null);
 
     try {
       const result = await recognizeMedicine(formData.image, (progress, status) => {
@@ -257,20 +304,17 @@ export default function Home() {
       setRecognizedText(result.text);
 
       if (result.medicine) {
-        const med = result.medicine;
-        setFormData((prev) => ({
-          ...prev,
-          name: prev.name || med.name,
-          type: med.type,
-          effect: prev.effect || med.effect,
-          usage: prev.usage || med.usage,
-          taboo: prev.taboo || med.taboo,
-          factory: prev.factory || med.factory,
-          tags: prev.tags || med.tags.join(', '),
-        }));
-        showToast(`识别成功：${med.name}，信息已自动填充`, 'success');
+        setMatchedMedicine(result.medicine);
+        showToast(`识别成功：${result.medicine.name}，点击「一键填充」填入信息`, 'success');
       } else {
-        showToast('识别完成，未匹配到常用药品，可手动填写', '');
+        const { extractInfoFromText } = await import('@/lib/medicineDB');
+        const extracted = extractInfoFromText(result.text);
+        if (extracted) {
+          setExtractedInfo(extracted);
+          showToast('识别完成，可点击「一键填充」填入识别信息', '');
+        } else {
+          showToast('识别完成，可手动填写信息', '');
+        }
       }
     } catch (err) {
       console.error('识别失败:', err);
@@ -280,6 +324,35 @@ export default function Home() {
       setRecognizing(false);
       setRecognizeProgress(0);
       setRecognizeStatus('');
+    }
+  };
+
+  // 一键填充识别结果
+  const handleFillFromRecognition = () => {
+    if (matchedMedicine) {
+      const med = matchedMedicine;
+      setFormData((prev) => ({
+        ...prev,
+        name: prev.name || med.name,
+        type: med.type,
+        effect: prev.effect || med.effect,
+        usage: prev.usage || med.usage,
+        taboo: prev.taboo || med.taboo,
+        factory: prev.factory || med.factory,
+        tags: prev.tags || med.tags.join(', '),
+      }));
+      showToast(`已填充：${med.name} 的药品信息`, 'success');
+    } else if (extractedInfo) {
+      setFormData((prev) => ({
+        ...prev,
+        name: prev.name || extractedInfo.name,
+        effect: prev.effect || extractedInfo.effect,
+        usage: prev.usage || extractedInfo.usage,
+        note: prev.note || extractedInfo.note,
+      }));
+      showToast('已填充识别到的药品信息', 'success');
+    } else {
+      showToast('没有可填充的识别信息', 'error');
     }
   };
 
@@ -588,7 +661,6 @@ export default function Home() {
                         e.stopPropagation();
                         setFormData((prev) => ({ ...prev, image: null, imageFeature: null }));
                         setRecognizedText('');
-                        setRecognizeError('');
                       }}
                     >
                       <CloseIcon size={16} />
@@ -629,6 +701,31 @@ export default function Home() {
                       ></div>
                     </div>
                     <p className="recognize-hint">AI正在识别药盒文字并匹配药品信息，请稍候…</p>
+                  </div>
+                )}
+
+                {/* 识别结果卡片（匹配成功或提取信息后显示） */}
+                {(matchedMedicine || extractedInfo) && !recognizing && (
+                  <div className="recognize-result">
+                    <div className="recognize-result-header">
+                      <div className="recognize-result-icon">
+                        <CheckIcon size={16} />
+                      </div>
+                      <div className="recognize-result-info">
+                        <div className="recognize-result-title">
+                          {matchedMedicine ? `已匹配：${matchedMedicine.name}` : '已识别药品信息'}
+                        </div>
+                        <div className="recognize-result-sub">
+                          {matchedMedicine
+                            ? matchedMedicine.effect.substring(0, 40) + (matchedMedicine.effect.length > 40 ? '…' : '')
+                            : extractedInfo?.name || '点击下方按钮填充'}
+                        </div>
+                      </div>
+                    </div>
+                    <button className="btn-auto-fill" onClick={handleFillFromRecognition}>
+                      <ZapIcon size={15} />
+                      一键填充
+                    </button>
                   </div>
                 )}
 
