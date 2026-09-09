@@ -552,21 +552,23 @@ export default function Home() {
       {/* 顶部状态栏 */}
       <header className="app-header">
         <div className="app-header-inner">
-          <div className="app-header-left">
-            <div className="app-logo"><PillIcon size={22} /></div>
-            <div className="app-header-text">
-              <h1 className="app-title">{activeTab === 'home' ? '我的药盒' : activeTab === 'search' ? '搜索药品' : '设置'}</h1>
-              <p className="app-subtitle">{activeTab === 'home' ? `${medicines.length} 种药品 · ${expiredCount} 种过期` : activeTab === 'search' ? '名称 / 功效 / 症状 / 图片' : '数据管理 · AI识别 · 账号'}</p>
-            </div>
-          </div>
-          <div className="app-header-right">
-            {activeTab === 'home' && (
-              <div className="app-stats-mini">
-                <div className="app-stat-mini"><span className="app-stat-num">{medicines.length}</span><span className="app-stat-label">药品</span></div>
-                <div className="app-stat-mini danger"><span className="app-stat-num">{expiredCount}</span><span className="app-stat-label">过期</span></div>
+          <div className="app-header-top">
+            <div className="app-header-left">
+              <div className="app-logo"><PillIcon size={22} /></div>
+              <div className="app-header-text">
+                <h1 className="app-title">{activeTab === 'home' ? '我的药盒' : activeTab === 'search' ? '搜索药品' : '设置'}</h1>
+                <p className="app-subtitle">{activeTab === 'home' ? `${medicines.length} 种药品 · ${expiredCount} 种过期` : activeTab === 'search' ? '名称 / 功效 / 症状 / 图片' : '数据管理 · AI识别 · 账号'}</p>
               </div>
-            )}
+            </div>
+            <div className="app-header-right"></div>
           </div>
+          {activeTab === 'home' && (
+            <div className="app-stats-row">
+              <div className="app-stat-card"><div className="app-stat-card-num">{medicines.length}</div><div className="app-stat-card-label">药品总数</div></div>
+              <div className="app-stat-card warning"><div className="app-stat-card-num">{expiringCount}</div><div className="app-stat-card-label">即将过期</div></div>
+              <div className="app-stat-card danger"><div className="app-stat-card-num">{expiredCount}</div><div className="app-stat-card-label">已过期</div></div>
+            </div>
+          )}
         </div>
       </header>
 
