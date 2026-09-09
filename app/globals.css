@@ -285,7 +285,6 @@ a {
 .stats {
   display: flex;
   gap: 16px;
-  align-items: center;
 }
 
 .stat-item {
@@ -310,31 +309,6 @@ a {
   opacity: 0.85;
   margin-top: 2px;
   font-weight: 500;
-}
-
-/* 退出登录按钮 */
-.logout-btn {
-  width: 36px;
-  height: 36px;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.25);
-  background: rgba(255, 255, 255, 0.12);
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.25s ease;
-  margin-left: 8px;
-}
-
-.logout-btn:hover {
-  background: rgba(255, 255, 255, 0.25);
-  transform: scale(1.08);
-}
-
-.logout-btn:active {
-  transform: scale(0.95);
 }
 
 /* ===== 搜索栏 ===== */
@@ -614,6 +588,13 @@ a {
   animation: cardEnter 0.5s ease backwards;
   position: relative;
 }
+
+.med-card:nth-child(1) { animation-delay: 0.05s; }
+.med-card:nth-child(2) { animation-delay: 0.1s; }
+.med-card:nth-child(3) { animation-delay: 0.15s; }
+.med-card:nth-child(4) { animation-delay: 0.2s; }
+.med-card:nth-child(5) { animation-delay: 0.25s; }
+.med-card:nth-child(6) { animation-delay: 0.3s; }
 
 @keyframes cardEnter {
   from {
@@ -940,9 +921,51 @@ a {
   max-height: 92vh;
   border-radius: 28px 28px 0 0;
   overflow-y: auto;
+  overflow-x: hidden !important;
   animation: slideUpModal 0.4s cubic-bezier(0.16, 1, 0.3, 1);
   padding-bottom: env(safe-area-inset-bottom, 0);
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.15);
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* 弹窗内强化防缩放防横向拖动 */
+.modal-overlay {
+  touch-action: pan-y;
+  overflow-x: hidden !important;
+}
+
+.modal-body {
+  overflow-x: hidden !important;
+  touch-action: pan-y;
+}
+
+.modal img {
+  -webkit-user-drag: none;
+  user-drag: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+  -webkit-user-select: none;
+  pointer-events: none;
+}
+
+.modal .upload-preview img,
+.modal .detail-img img,
+.modal .med-card-img img,
+.modal .search-result-img img {
+  pointer-events: none;
+  -webkit-touch-callout: none;
+}
+
+.modal * {
+  -webkit-touch-callout: none;
+}
+
+.modal input,
+.modal textarea,
+.modal select {
+  -webkit-touch-callout: default;
+  touch-action: auto;
 }
 
 @keyframes slideUpModal {
@@ -1057,7 +1080,7 @@ a {
   padding: 14px 16px;
   border: 1.5px solid var(--border);
   border-radius: 14px;
-  font-size: 15px;
+  font-size: 16px;
   color: var(--text);
   background: var(--bg);
   transition: all 0.25s ease;
@@ -1964,6 +1987,48 @@ a {
   box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4);
 }
 
+/* ===== 底部导航（可选） ===== */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 0 calc(env(safe-area-inset-bottom, 0) + 8px);
+  z-index: 80;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.06);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 16px;
+  color: var(--text-light);
+  font-size: 11px;
+  transition: all 0.2s ease;
+  font-weight: 600;
+}
+
+.bottom-nav-item.active {
+  color: var(--primary);
+}
+
+.bottom-nav-item.active svg {
+  transform: translateY(-2px);
+}
+
+.bottom-nav-item svg {
+  width: 24px;
+  height: 24px;
+  transition: transform 0.2s ease;
+}
+
 /* ===== 响应式 ===== */
 @media (min-width: 640px) {
   .modal-overlay {
@@ -2139,7 +2204,7 @@ a {
 .auth-title {
   font-size: 28px;
   font-weight: 800;
-  color: var(--text);
+  color: var(--text-primary);
   margin: 0 0 8px;
   letter-spacing: -0.5px;
 }
@@ -2166,8 +2231,8 @@ a {
   font-size: 18px;
   border: 2px solid var(--border);
   border-radius: 16px;
-  background: var(--bg);
-  color: var(--text);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
   outline: none;
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   text-align: center;
@@ -2182,7 +2247,7 @@ a {
 }
 
 .auth-input::placeholder {
-  color: var(--text-light);
+  color: var(--text-muted);
   letter-spacing: normal;
   font-weight: 400;
   font-size: 15px;
@@ -2231,7 +2296,7 @@ a {
 
 .auth-hint {
   font-size: 13px;
-  color: var(--text-light);
+  color: var(--text-muted);
   margin: 24px 0 0;
 }
 
@@ -2243,7 +2308,7 @@ a {
   align-items: center;
   justify-content: center;
   gap: 16px;
-  background: var(--bg);
+  background: var(--bg-primary);
 }
 
 .auth-loading p {
@@ -2251,13 +2316,29 @@ a {
   font-size: 15px;
 }
 
-.auth-loading .spinner {
-  width: 48px;
-  height: 48px;
-  border: 3px solid var(--border);
-  border-top-color: var(--primary);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+/* 退出登录按钮 */
+.logout-btn {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.12);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.25s ease;
+  margin-left: 8px;
+}
+
+.logout-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+  transform: scale(1.08);
+}
+
+.logout-btn:active {
+  transform: scale(0.95);
 }
 
 /* 密码页面移动端适配 */
