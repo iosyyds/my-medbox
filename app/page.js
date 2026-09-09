@@ -556,16 +556,16 @@ export default function Home() {
       <main>
         <div className="auth-page">
           <div className="auth-card">
-            <div className="auth-icon"><ShieldIcon size={48} /></div>
+            <div className="auth-logo"><ShieldIcon size={48} /></div>
             <h1 className="auth-title">我的药盒</h1>
-            <p className="auth-sub">请输入密码访问</p>
+            <p className="auth-subtitle">请输入密码访问</p>
             <form onSubmit={handleLogin} className="auth-form">
               <div className="auth-input-wrap">
                 <input type="password" className="auth-input" placeholder="请输入密码" value={passwordInput} maxLength={20}
                   onChange={(e) => { setPasswordInput(e.target.value); setPasswordError(''); }} autoFocus inputMode="numeric" />
               </div>
               {passwordError && <p className="auth-error">{passwordError}</p>}
-              <button type="submit" className="auth-btn" disabled={passwordLoading}>{passwordLoading ? '验证中…' : '进入'}</button>
+              <button type="submit" className="auth-button" disabled={passwordLoading}>{passwordLoading ? '验证中…' : '进入'}</button>
             </form>
             <p className="auth-hint">数据仅保存在本地浏览器</p>
           </div>
