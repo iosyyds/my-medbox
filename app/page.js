@@ -14,7 +14,7 @@ import {
 import { compressImage, computeImageHash, searchByImage } from '@/lib/imageUtils';
 import { generateKeywords } from '@/lib/keywords';
 import { recognizeMedicine, preloadOCR } from '@/lib/ocr';
-import { recognizeMedicineWithAI, getAIConfig, saveAIConfig, isAIEnabled, getProviderName, getProviderSignupUrl } from '@/lib/aiApi';
+import { recognizeMedicineWithAI, getAIConfig, saveAIConfig, isAIEnabled, getAISignupUrl } from '@/lib/aiApi';
 
 function useDebounce(value, delay = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -66,8 +66,8 @@ export default function Home() {
   const [recognizedTextDraft, setRecognizedTextDraft] = useState('');
   const [importing, setImporting] = useState(false);
   const [aiResult, setAiResult] = useState(null);
-  const [aiConfig, setAiConfig] = useState({ provider: '', apiKey: '', enabled: false });
-  const [aiConfigDraft, setAiConfigDraft] = useState({ provider: '', apiKey: '', enabled: false });
+  const [aiConfig, setAiConfig] = useState({ apiKey: '', enabled: false });
+  const [aiConfigDraft, setAiConfigDraft] = useState({ apiKey: '', enabled: false });
   const [activeTab, setActiveTab] = useState('home');
 
   const [formData, setFormData] = useState({
@@ -173,13 +173,13 @@ export default function Home() {
   // 保存 AI 配置
   const handleSaveAIConfig = () => {
     const cfg = { ...aiConfigDraft };
-    if (cfg.enabled && (!cfg.provider || !cfg.apiKey.trim())) {
-      showToast('请选择 AI 服务商并填写 API Key', 'error');
+    if (cfg.enabled && !cfg.apiKey.trim()) {
+      showToast('请填写智谱 API Key', 'error');
       return;
     }
     saveAIConfig(cfg);
     setAiConfig(cfg);
-    showToast(cfg.enabled ? `AI 识别已启用（${getProviderName(cfg.provider)}）` : 'AI 识别已关闭', 'success');
+    showToast(cfg.enabled ? '智谱 AI 识别已启用' : 'AI 识别已关闭', 'success');
   };
 
   const stats = useMemo(() => getStats(medicines), [medicines]);
@@ -689,12 +689,12 @@ export default function Home() {
 
             {/* AI 识别 */}
             <div className="settings-group">
-              <h3 className="settings-group-title">AI 药品识别</h3>
+              <h3 className="settings-group-title">AI 药品识别（智谱 GLM-4V）</h3>
               <div className="settings-ai-card">
                 <div className="settings-ai-header">
                   <div className="settings-ai-status">
                     <span className={`settings-ai-dot ${aiConfig.enabled ? 'active' : ''}`}></span>
-                    <span className="settings-ai-status-text">{aiConfig.enabled ? `已启用 · ${getProviderName(aiConfig.provider)}` : '未启用'}</span>
+                    <span className="settings-ai-status-text">{aiConfig.enabled ? '已启用 · 智谱 GLM-4V' : '未启用'}</span>
                   </div>
                   <label className="settings-switch">
                     <input type="checkbox" checked={aiConfigDraft.enabled} onChange={(e) => setAiConfigDraft((prev) => ({ ...prev, enabled: e.target.checked }))} />
@@ -704,24 +704,14 @@ export default function Home() {
                 {aiConfigDraft.enabled && (
                   <div className="settings-ai-body">
                     <div className="form-group">
-                      <label className="form-label">选择 AI 服务商</label>
-                      <select className="form-select" value={aiConfigDraft.provider} onChange={(e) => setAiConfigDraft((prev) => ({ ...prev, provider: e.target.value }))}>
-                        <option value="">请选择…</option>
-                        <option value="zhipu">智谱 GLM-4V（国内直连，推荐）</option>
-                        <option value="gemini">Google Gemini（需科学上网）</option>
-                      </select>
+                      <label className="form-label">智谱 API Key</label>
+                      <input type="password" className="form-input" placeholder="请输入 API Key（格式：ID.secret）" value={aiConfigDraft.apiKey} onChange={(e) => setAiConfigDraft((prev) => ({ ...prev, apiKey: e.target.value }))} />
+                      <p className="form-hint"><a href={getAISignupUrl()} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>点此免费申请智谱 API Key</a> · Key 仅保存在本地浏览器</p>
                     </div>
-                    <div className="form-group">
-                      <label className="form-label">API Key</label>
-                      <input type="password" className="form-input" placeholder="请输入 API Key" value={aiConfigDraft.apiKey} onChange={(e) => setAiConfigDraft((prev) => ({ ...prev, apiKey: e.target.value }))} />
-                      {aiConfigDraft.provider && (
-                        <p className="form-hint"><a href={getProviderSignupUrl(aiConfigDraft.provider)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>点此免费申请 {getProviderName(aiConfigDraft.provider)} API Key</a></p>
-                      )}
-                    </div>
-                    <button className="btn btn-primary btn-block btn-sm" onClick={handleSaveAIConfig} style={{ marginTop: 8 }}>保存 AI 配置</button>
+                    <button className="btn btn-primary btn-block btn-sm" onClick={handleSaveAIConfig} style={{ marginTop: 8 }}>保存并启用</button>
                   </div>
                 )}
-                {!aiConfigDraft.enabled && (<p className="settings-ai-hint">启用后，拍照将直接调用 AI 多模态模型识别药品信息，准确度更高。API Key 仅保存在本地浏览器。</p>)}
+                {!aiConfigDraft.enabled && (<p className="settings-ai-hint">启用后，拍照将直接调用智谱 GLM-4V 多模态 AI 识别药品信息，准确度更高。API Key 仅保存在本地浏览器。</p>)}
               </div>
             </div>
 
@@ -941,48 +931,6 @@ export default function Home() {
                   <div className="stat-card"><div className="stat-card-num" style={{ color: '#ef4444' }}>{stats.expired}</div><div className="stat-card-label">已过期</div></div>
                   <div className="stat-card"><div className="stat-card-num" style={{ color: '#f59e0b' }}>{stats.expiring}</div><div className="stat-card-label">即将过期</div></div>
                   <div className="stat-card"><div className="stat-card-num">{stats.totalImageSizeMB}</div><div className="stat-card-label">图片(MB)</div></div>
-                </div>
-              </div>
-              <div className="settings-section">
-                <div className="settings-section-title">AI 药品识别</div>
-                <div className="ai-config-card">
-                  <div className="ai-config-header">
-                    <div className="ai-config-status">
-                      <span className={`ai-status-dot ${aiConfig.enabled ? 'active' : ''}`}></span>
-                      <span className="ai-status-text">{aiConfig.enabled ? `已启用 · ${getProviderName(aiConfig.provider)}` : '未启用'}</span>
-                    </div>
-                    <label className="ai-switch">
-                      <input type="checkbox" checked={aiConfigDraft.enabled} onChange={(e) => setAiConfigDraft((prev) => ({ ...prev, enabled: e.target.checked }))} />
-                      <span className="ai-switch-slider"></span>
-                    </label>
-                  </div>
-                  {aiConfigDraft.enabled && (
-                    <div className="ai-config-body">
-                      <div className="form-group">
-                        <label className="form-label">选择 AI 服务商</label>
-                        <select className="form-select" value={aiConfigDraft.provider} onChange={(e) => setAiConfigDraft((prev) => ({ ...prev, provider: e.target.value }))}>
-                          <option value="">请选择…</option>
-                          <option value="zhipu">智谱 GLM-4V（国内直连，推荐）</option>
-                          <option value="gemini">Google Gemini（需科学上网）</option>
-                        </select>
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">API Key</label>
-                        <input type="password" className="form-input" placeholder="请输入 API Key" value={aiConfigDraft.apiKey} onChange={(e) => setAiConfigDraft((prev) => ({ ...prev, apiKey: e.target.value }))} />
-                        {aiConfigDraft.provider && (
-                          <p className="form-hint">
-                            <a href={getProviderSignupUrl(aiConfigDraft.provider)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>
-                              点此免费申请 {getProviderName(aiConfigDraft.provider)} API Key
-                            </a>
-                          </p>
-                        )}
-                      </div>
-                      <button className="btn btn-primary btn-block btn-sm" onClick={handleSaveAIConfig} style={{ marginTop: 8 }}>保存 AI 配置</button>
-                    </div>
-                  )}
-                  {!aiConfigDraft.enabled && (
-                    <p className="ai-config-hint">启用后，拍照将直接调用 AI 多模态模型识别药品信息，准确度更高。API Key 仅保存在本地浏览器。</p>
-                  )}
                 </div>
               </div>
               <div className="settings-section">
