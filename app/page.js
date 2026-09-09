@@ -91,19 +91,33 @@ export default function Home() {
       const cfg = getAIConfig();
       setAiConfig(cfg);
       setAiConfigDraft({ apiKey: cfg.isDefault ? '' : cfg.apiKey, enabled: cfg.enabled });
-      // 全自动全局同步拉取（仅本地为空时覆盖）
-      fetch(`${SYNC_API_URL}?token=${encodeURIComponent(GLOBAL_SYNC_TOKEN)}`)
-        .then(r => r.json())
-        .then(data => {
-          if (data.success && data.medicines && data.medicines.length > 0 && localMeds.length === 0) {
-            saveMedicines(data.medicines);
-            setMedicines(data.medicines);
-          }
+      // 全自动全局同步：本地有数据则上传，本地为空则拉取
+      if (localMeds.length > 0) {
+        // 本地有数据，自动上传到云端
+        fetch(SYNC_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: GLOBAL_SYNC_TOKEN, medicines: localMeds }),
+        }).then(() => {
           const now = new Date().toLocaleString('zh-CN');
           localStorage.setItem(SYNC_TIME_KEY, now);
           setLastSyncTime(now);
-        })
-        .catch(() => {});
+        }).catch(() => {});
+      } else {
+        // 本地为空，从云端拉取
+        fetch(`${SYNC_API_URL}?token=${encodeURIComponent(GLOBAL_SYNC_TOKEN)}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data.success && data.medicines && data.medicines.length > 0) {
+              saveMedicines(data.medicines);
+              setMedicines(data.medicines);
+            }
+            const now = new Date().toLocaleString('zh-CN');
+            localStorage.setItem(SYNC_TIME_KEY, now);
+            setLastSyncTime(now);
+          })
+          .catch(() => {});
+      }
     }
   }, [isAuthenticated]);
 
