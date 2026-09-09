@@ -40,6 +40,10 @@
 html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
 }
 
 body {
@@ -52,6 +56,33 @@ body {
   padding-bottom: 100px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+  /* 防止双击缩放和双指缩放 */
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  overscroll-behavior-x: none;
+}
+
+/* 所有元素不允许超出视口宽度 */
+main,
+header,
+footer,
+section,
+div,
+nav,
+article,
+aside {
+  max-width: 100%;
+}
+
+img,
+video,
+canvas,
+svg {
+  max-width: 100%;
+  height: auto;
 }
 
 button {
@@ -79,6 +110,7 @@ a {
   text-decoration: none;
 }
 
+/* ===== 顶部导航 ===== */
 .header {
   background: var(--primary-gradient);
   color: #fff;
@@ -153,6 +185,7 @@ a {
   margin-top: 2px;
 }
 
+/* ===== 搜索栏 ===== */
 .search-bar {
   display: flex;
   gap: 8px;
@@ -244,6 +277,7 @@ a {
   height: 18px;
 }
 
+/* ===== 筛选标签 ===== */
 .filter-bar {
   max-width: 640px;
   margin: 14px auto 0;
@@ -279,6 +313,7 @@ a {
   box-shadow: 0 2px 8px rgba(13, 148, 136, 0.3);
 }
 
+/* ===== 主内容 ===== */
 .container {
   max-width: 640px;
   margin: 0 auto;
@@ -303,6 +338,7 @@ a {
   color: var(--text-light);
 }
 
+/* 过期提醒横幅 */
 .expire-banner {
   background: var(--warning-bg);
   border: 1px solid #fde68a;
@@ -345,6 +381,7 @@ a {
   font-size: 15px;
 }
 
+/* ===== 药品卡片网格 ===== */
 .med-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -506,6 +543,7 @@ a {
   font-size: 11px;
 }
 
+/* 空状态 */
 .empty-state {
   text-align: center;
   padding: 60px 20px;
@@ -542,6 +580,7 @@ a {
   line-height: 1.6;
 }
 
+/* ===== 浮动添加按钮 ===== */
 .fab {
   position: fixed;
   bottom: calc(env(safe-area-inset-bottom, 0) + 24px);
@@ -569,6 +608,7 @@ a {
   height: 28px;
 }
 
+/* ===== 弹窗通用 ===== */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -665,6 +705,7 @@ a {
   background: var(--card);
 }
 
+/* ===== 表单 ===== */
 .form-group {
   margin-bottom: 18px;
 }
@@ -723,6 +764,7 @@ a {
   line-height: 1.5;
 }
 
+/* 图片上传区 */
 .upload-area {
   border: 2px dashed var(--border);
   border-radius: var(--radius);
@@ -803,6 +845,177 @@ a {
   height: 16px;
 }
 
+.recognize-progress {
+  margin-top: 14px;
+  padding: 14px;
+  background: linear-gradient(135deg, #f5f3ff, #ede9fe);
+  border-radius: 12px;
+  border: 1px solid #ddd6fe;
+  animation: pulse 2s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
+}
+
+.recognize-progress-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #6d28d9;
+  margin-bottom: 10px;
+}
+
+.recognize-progress-header svg {
+  width: 16px;
+  height: 16px;
+  animation: spin 1.5s linear infinite;
+}
+
+.recognize-progress-num {
+  margin-left: auto;
+  font-size: 13px;
+  font-weight: 700;
+  color: #7c3aed;
+}
+
+.recognize-progress-bar {
+  height: 6px;
+  background: #ddd6fe;
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.recognize-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8b5cf6, #6366f1);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.recognize-hint {
+  font-size: 11px;
+  color: #8b5cf6;
+  opacity: 0.8;
+  line-height: 1.5;
+}
+
+.recognized-text {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--bg);
+  border-radius: 10px;
+  border: 1px solid var(--border);
+}
+
+.recognized-text-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.recognized-text-header svg {
+  width: 14px;
+  height: 14px;
+}
+
+.recognized-text-content {
+  font-size: 12px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 100px;
+  overflow-y: auto;
+}
+
+/* 识别失败 */
+.recognize-error {
+  margin-top: 12px;
+  padding: 12px;
+  background: var(--danger-bg);
+  border-radius: 10px;
+  border: 1px solid #fecaca;
+}
+
+.recognize-error-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--danger);
+  margin-bottom: 6px;
+}
+
+.recognize-error-header svg {
+  width: 14px;
+  height: 14px;
+}
+
+.recognize-error-text {
+  font-size: 12px;
+  color: #b91c1c;
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+
+/* 重新识别按钮 */
+.btn-rerecognize {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 7px 14px;
+  background: var(--danger);
+  color: #fff;
+  border-radius: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.15s;
+}
+
+.btn-rerecognize:active {
+  transform: scale(0.96);
+  opacity: 0.9;
+}
+
+.btn-rerecognize svg {
+  width: 13px;
+  height: 13px;
+}
+
+.btn-rerecognize-small {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  background: var(--primary-bg);
+  color: var(--primary);
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: auto;
+  transition: all 0.15s;
+}
+
+.btn-rerecognize-small:active {
+  opacity: 0.8;
+}
+
+.btn-rerecognize-small svg {
+  width: 12px;
+  height: 12px;
+}
+
+/* 按钮 */
 .btn {
   padding: 13px 20px;
   border-radius: 10px;
@@ -855,6 +1068,7 @@ a {
   height: 17px;
 }
 
+/* ===== 药品详情 ===== */
 .detail-img {
   width: 100%;
   height: 220px;
@@ -944,6 +1158,7 @@ a {
   flex-wrap: wrap;
 }
 
+/* ===== AI关键词弹窗 ===== */
 .ai-loading {
   text-align: center;
   padding: 40px 20px;
@@ -1037,6 +1252,7 @@ a {
   flex-shrink: 0;
 }
 
+/* ===== 识图搜索结果 ===== */
 .search-result-item {
   display: flex;
   gap: 12px;
@@ -1110,6 +1326,7 @@ a {
   transition: width 0.3s ease;
 }
 
+/* ===== Toast ===== */
 .toast {
   position: fixed;
   top: calc(env(safe-area-inset-top, 0) + 20px);
@@ -1140,6 +1357,7 @@ a {
   background: var(--danger);
 }
 
+/* ===== 响应式 ===== */
 @media (min-width: 640px) {
   .modal-overlay {
     align-items: center;
@@ -1167,6 +1385,7 @@ a {
   }
 }
 
+/* 安全区域适配 */
 @supports (padding: max(0px)) {
   .header {
     padding-left: max(16px, env(safe-area-inset-left));
