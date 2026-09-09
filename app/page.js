@@ -60,6 +60,9 @@ export default function Home() {
   const [recognizeError, setRecognizeError] = useState('');
   const [matchedMedicine, setMatchedMedicine] = useState(null);
   const [extractedInfo, setExtractedInfo] = useState(null);
+  const [recognizeQuality, setRecognizeQuality] = useState(0);
+  const [editingRecognizedText, setEditingRecognizedText] = useState(false);
+  const [recognizedTextDraft, setRecognizedTextDraft] = useState('');
   const [importing, setImporting] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -228,20 +231,25 @@ export default function Home() {
       setFormData((prev) => ({ ...prev, image: compressed, imageFeature: feature }));
       showToast('图片上传成功，正在识别…', 'success');
       setRecognizing(true); setRecognizeProgress(0); setRecognizeStatus('开始识别');
-      setRecognizedText(''); setRecognizeError(''); setMatchedMedicine(null); setExtractedInfo(null);
+      setRecognizedText(''); setRecognizeError(''); setMatchedMedicine(null); setExtractedInfo(null); setRecognizeQuality(0);
       try {
         const result = await recognizeMedicine(compressed, (progress, status) => {
           setRecognizeProgress(Math.round(progress * 100)); setRecognizeStatus(status);
         });
         setRecognizedText(result.text);
+        setRecognizeQuality(result.quality || 0);
         if (result.medicine) {
           setMatchedMedicine(result.medicine);
           showToast(`识别成功：${result.medicine.name}，点击一键填充`, 'success');
         } else {
           const { extractInfoFromText } = await import('@/lib/medicineDB');
           const extracted = extractInfoFromText(result.text);
-          if (extracted) { setExtractedInfo(extracted); showToast('识别完成，点击一键填充', ''); }
-          else showToast('识别完成，可手动填写', '');
+          if (extracted && (extracted.name || extracted.effect)) {
+            setExtractedInfo(extracted);
+            showToast('识别完成，点击一键填充', '');
+          } else {
+            showToast('识别结果不清晰，建议手动填写或编辑识别文字', '');
+          }
         }
       } catch (err) {
         setRecognizeError(err.message || '识别失败'); showToast('识别失败，可手动填写', 'error');
@@ -253,17 +261,19 @@ export default function Home() {
   const handleReRecognize = async () => {
     if (!formData.image || recognizing) return;
     setRecognizing(true); setRecognizeProgress(0); setRecognizeStatus('开始识别');
-    setRecognizedText(''); setRecognizeError(''); setMatchedMedicine(null); setExtractedInfo(null);
+    setRecognizedText(''); setRecognizeError(''); setMatchedMedicine(null); setExtractedInfo(null); setRecognizeQuality(0);
     try {
       const result = await recognizeMedicine(formData.image, (progress, status) => {
         setRecognizeProgress(Math.round(progress * 100)); setRecognizeStatus(status);
       });
       setRecognizedText(result.text);
+      setRecognizeQuality(result.quality || 0);
       if (result.medicine) { setMatchedMedicine(result.medicine); showToast('识别成功', 'success'); }
       else {
         const { extractInfoFromText } = await import('@/lib/medicineDB');
         const extracted = extractInfoFromText(result.text);
-        if (extracted) setExtractedInfo(extracted);
+        if (extracted && (extracted.name || extracted.effect)) setExtractedInfo(extracted);
+        else showToast('识别结果不清晰，建议手动填写', '');
       }
     } catch (err) { setRecognizeError(err.message || '识别失败'); showToast('识别失败', 'error'); }
     finally { setRecognizing(false); setRecognizeProgress(0); setRecognizeStatus(''); }
@@ -279,7 +289,7 @@ export default function Home() {
         tags: prev.tags || (med.tags ? med.tags.join(', ') : ''), note: prev.note || '',
       }));
       showToast(`已填充：${med.name}`, 'success');
-    } else if (extractedInfo) {
+    } else if (extractedInfo && (extractedInfo.name || extractedInfo.effect)) {
       setFormData((prev) => ({
         ...prev, name: prev.name || extractedInfo.name || '', type: extractedInfo.type || prev.type,
         effect: prev.effect || extractedInfo.effect || '', usage: prev.usage || extractedInfo.usage || '',
@@ -288,7 +298,47 @@ export default function Home() {
         note: prev.note || extractedInfo.note || '',
       }));
       showToast('已填充识别信息', 'success');
-    } else showToast('没有可填充的识别信息', 'error');
+    } else showToast('识别结果不清晰，请手动填写或编辑识别文字', 'error');
+  };
+
+  // 开始编辑识别文字
+  const handleStartEditRecognizedText = () => {
+    setRecognizedTextDraft(recognizedText);
+    setEditingRecognizedText(true);
+  };
+
+  // 保存编辑后的识别文字，重新匹配药品
+  const handleSaveRecognizedText = async () => {
+    const text = recognizedTextDraft.trim();
+    if (!text) { showToast('识别文字不能为空', 'error'); return; }
+    setRecognizedText(text);
+    setEditingRecognizedText(false);
+    setMatchedMedicine(null);
+    setExtractedInfo(null);
+    try {
+      const { matchMedicineFromText, extractInfoFromText } = await import('@/lib/medicineDB');
+      const medicine = matchMedicineFromText(text);
+      if (medicine) {
+        setMatchedMedicine(medicine);
+        showToast(`已匹配：${medicine.name}，点击一键填充`, 'success');
+      } else {
+        const extracted = extractInfoFromText(text);
+        if (extracted && (extracted.name || extracted.effect)) {
+          setExtractedInfo(extracted);
+          showToast('已更新识别信息，点击一键填充', '');
+        } else {
+          showToast('未匹配到药品，可手动填写', '');
+        }
+      }
+    } catch (e) {
+      showToast('匹配失败，请手动填写', 'error');
+    }
+  };
+
+  // 取消编辑识别文字
+  const handleCancelEditRecognizedText = () => {
+    setEditingRecognizedText(false);
+    setRecognizedTextDraft('');
   };
 
   const handleSaveMed = () => {
@@ -522,6 +572,9 @@ export default function Home() {
                         <div className="recognize-result-title">{matchedMedicine ? `已匹配：${matchedMedicine.name}` : '已识别药品信息'}</div>
                         <div className="recognize-result-sub">{matchedMedicine ? matchedMedicine.effect.substring(0, 40) + (matchedMedicine.effect.length > 40 ? '…' : '') : extractedInfo?.name || '点击下方按钮填充'}</div>
                       </div>
+                      {recognizeQuality > 0 && recognizeQuality < 0.5 && (
+                        <span className="recognize-quality-badge low">识别度低</span>
+                      )}
                     </div>
                     <button className="btn-auto-fill" onClick={handleFillFromRecognition}><ZapIcon size={15} />一键填充</button>
                   </div>
@@ -535,8 +588,33 @@ export default function Home() {
                 )}
                 {recognizedText && !recognizing && (
                   <div className="recognized-text">
-                    <div className="recognized-text-header"><ImageIcon size={14} /><span>识别到的文字</span>{formData.image && (<button className="btn-rerecognize-small" onClick={handleReRecognize}><ScanIcon size={12} />重新识别</button>)}</div>
-                    <p className="recognized-text-content">{recognizedText.slice(0, 200)}{recognizedText.length > 200 ? '…' : ''}</p>
+                    <div className="recognized-text-header">
+                      <ImageIcon size={14} />
+                      <span>识别到的文字</span>
+                      <div className="recognized-text-actions">
+                        {!editingRecognizedText && (
+                          <button className="btn-edit-text" onClick={handleStartEditRecognizedText} title="编辑识别文字">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                            编辑
+                          </button>
+                        )}
+                        {formData.image && (<button className="btn-rerecognize-small" onClick={handleReRecognize}><ScanIcon size={12} />重新识别</button>)}
+                      </div>
+                    </div>
+                    {editingRecognizedText ? (
+                      <div className="recognized-text-edit">
+                        <textarea className="form-textarea recognized-textarea" value={recognizedTextDraft} onChange={(e) => setRecognizedTextDraft(e.target.value)} placeholder="编辑识别到的文字，修改后点击保存重新匹配药品" rows={4} />
+                        <div className="recognized-text-edit-actions">
+                          <button className="btn btn-secondary btn-sm" onClick={handleCancelEditRecognizedText}>取消</button>
+                          <button className="btn btn-primary btn-sm" onClick={handleSaveRecognizedText}><CheckIcon size={14} />保存并重新匹配</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="recognized-text-content">{recognizedText.slice(0, 300)}{recognizedText.length > 300 ? '…' : ''}</p>
+                    )}
+                    {recognizeQuality > 0 && recognizeQuality < 0.5 && !editingRecognizedText && (
+                      <p className="recognize-quality-hint">识别结果可能不准确，建议点击「编辑」手动修正后再填充</p>
+                    )}
                   </div>
                 )}
               </div>
