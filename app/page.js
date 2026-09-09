@@ -68,6 +68,7 @@ export default function Home() {
   const [aiResult, setAiResult] = useState(null);
   const [aiConfig, setAiConfig] = useState({ provider: '', apiKey: '', enabled: false });
   const [aiConfigDraft, setAiConfigDraft] = useState({ provider: '', apiKey: '', enabled: false });
+  const [activeTab, setActiveTab] = useState('home');
 
   const [formData, setFormData] = useState({
     name: '', type: 'otc', expireDate: '', effect: '', usage: '',
@@ -543,86 +544,248 @@ export default function Home() {
   }
 
   return (
-    <main>
-      <header className="header">
-        <div className="header-inner">
-          <div className="header-top">
-            <div className="logo">
-              <div className="logo-icon"><PillIcon size={24} /></div>
-              <div><div className="logo-text">我的药盒</div><div className="logo-sub">个人药品记录 · 随时查药</div></div>
-            </div>
-            <div className="stats">
-              <div className="stat-item"><div className="stat-num">{medicines.length}</div><div className="stat-label">药品</div></div>
-              <div className="stat-item stat-item-danger"><div className="stat-num stat-num-danger">{expiredCount}</div><div className="stat-label">过期</div></div>
-              <div className="header-actions">
-                <button className="logout-btn" onClick={() => setShowSettingsModal(true)} title="设置与管理">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                </button>
-                <button className="logout-btn" onClick={handleLogout} title="退出登录"><ShieldIcon size={16} /></button>
-              </div>
+    <main className="app-main">
+      {/* 顶部状态栏 */}
+      <header className="app-header">
+        <div className="app-header-inner">
+          <div className="app-header-left">
+            <div className="app-logo"><PillIcon size={22} /></div>
+            <div className="app-header-text">
+              <h1 className="app-title">{activeTab === 'home' ? '我的药盒' : activeTab === 'search' ? '搜索药品' : '设置'}</h1>
+              <p className="app-subtitle">{activeTab === 'home' ? `${medicines.length} 种药品 · ${expiredCount} 种过期` : activeTab === 'search' ? '名称 / 功效 / 症状 / 图片' : '数据管理 · AI识别 · 账号'}</p>
             </div>
           </div>
-          <div className="search-bar">
-            <div className="search-input-wrap">
-              <SearchIcon size={18} />
-              <input type="text" className="search-input" placeholder="搜索药名、功效、症状…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} autoComplete="off" />
-              {searchQuery && (<button className="search-clear" onClick={() => setSearchQuery('')} title="清除"><CloseIcon size={14} /></button>)}
-            </div>
-            <div className="search-actions">
-              <button className="btn-ai" onClick={() => { setAiInput(searchQuery); setAiResults([]); setShowAiModal(true); }}><SparklesIcon size={15} /><span>AI关键词</span></button>
-              <button className="btn-camera-search" onClick={() => { setCameraResults([]); setShowCameraModal(true); }}><CameraIcon size={18} /></button>
-            </div>
+          <div className="app-header-right">
+            {activeTab === 'home' && (
+              <div className="app-stats-mini">
+                <div className="app-stat-mini"><span className="app-stat-num">{medicines.length}</span><span className="app-stat-label">药品</span></div>
+                <div className="app-stat-mini danger"><span className="app-stat-num">{expiredCount}</span><span className="app-stat-label">过期</span></div>
+              </div>
+            )}
           </div>
         </div>
       </header>
 
-      <div className="filter-bar">
-        {filters.map((f) => (<button key={f.key} className={`filter-chip ${currentFilter === f.key ? 'active' : ''}`} onClick={() => setCurrentFilter(f.key)}>{f.label}</button>))}
-        <div className="sort-select-wrap">
-          <select className="sort-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-            {sortOptions.map((s) => (<option key={s.key} value={s.key}>{s.label}</option>))}
-          </select>
-        </div>
-      </div>
+      {/* 内容区域 */}
+      <div className="app-content">
+        {/* ===== 首页 - 药品列表 ===== */}
+        {activeTab === 'home' && (
+          <div className="tab-content">
+            {/* 搜索栏 */}
+            <div className="app-search-bar">
+              <div className="app-search-input-wrap">
+                <SearchIcon size={18} />
+                <input type="text" className="app-search-input" placeholder="搜索药名、功效、症状…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} autoComplete="off" />
+                {searchQuery && (<button className="app-search-clear" onClick={() => setSearchQuery('')}><CloseIcon size={14} /></button>)}
+              </div>
+              <button className="app-search-ai" onClick={() => { setAiInput(searchQuery); setAiResults([]); setShowAiModal(true); }} title="AI关键词"><SparklesIcon size={18} /></button>
+            </div>
 
-      <div className="container">
-        {expiredCount + expiringCount > 0 && (
-          <div className="expire-banner" onClick={handleDeleteExpired} style={{ cursor: 'pointer' }}>
-            <WarningIcon size={22} />
-            <div className="expire-banner-text">有 <strong>{expiredCount + expiringCount}</strong> 种药品已过期或即将过期，点击清理过期药品</div>
+            {/* 筛选标签 */}
+            <div className="app-filter-bar">
+              {filters.map((f) => (<button key={f.key} className={`app-filter-chip ${currentFilter === f.key ? 'active' : ''}`} onClick={() => setCurrentFilter(f.key)}>{f.label}</button>))}
+            </div>
+
+            {/* 过期提醒 */}
+            {expiredCount + expiringCount > 0 && (
+              <div className="app-expire-banner" onClick={handleDeleteExpired}>
+                <div className="app-expire-icon"><WarningIcon size={18} /></div>
+                <div className="app-expire-text"><strong>{expiredCount + expiringCount}</strong> 种药品已过期或即将过期，点击清理</div>
+                <div className="app-expire-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+              </div>
+            )}
+
+            {/* 药品列表 */}
+            <div className="app-section-header">
+              <h2 className="app-section-title">全部药品</h2>
+              <span className="app-section-count">{filteredMedicines.length} 种</span>
+            </div>
+
+            {filteredMedicines.length === 0 ? (
+              <div className="app-empty">
+                <div className="app-empty-icon"><PillIcon size={40} /></div>
+                <h3>{searchQuery || currentFilter !== 'all' ? '没有找到匹配的药品' : '还没有记录药品'}</h3>
+                <p>{searchQuery || currentFilter !== 'all' ? '试试其他关键词或筛选条件' : '点击下方 + 号，拍照记录你的第一种药品'}</p>
+              </div>
+            ) : (
+              <div className="app-med-list">
+                {filteredMedicines.map((med, index) => {
+                  const exp = getExpireStatus(med.expireDate);
+                  return (
+                    <div key={med.id} className="app-med-card" style={{ animationDelay: `${Math.min(index * 0.04, 0.3)}s` }} onClick={() => { setDetailMed(med); setShowDetailModal(true); }}>
+                      <div className="app-med-img">
+                        {med.image ? (<img src={med.image} alt={med.name} loading="lazy" />) : (<div className="app-med-img-placeholder"><PillIcon size={32} /></div>)}
+                        {exp.status !== 'unknown' && <span className={`app-med-badge ${exp.class}`}>{exp.label}</span>}
+                      </div>
+                      <div className="app-med-info">
+                        <div className="app-med-name-row">
+                          <span className="app-med-name">{med.name}</span>
+                          {med.type === 'rx' && <span className="app-med-rx">Rx</span>}
+                        </div>
+                        <p className="app-med-effect">{med.effect || '暂无功效描述'}</p>
+                        <div className="app-med-footer">
+                          <span className="app-med-date"><CalendarIcon size={12} />{formatDate(med.expireDate)}</span>
+                          <span className="app-med-type">{getTypeLabel(med.type)}</span>
+                        </div>
+                      </div>
+                      <div className="app-med-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
-        <div className="section-title"><h2>我的药品</h2><span>共 {filteredMedicines.length} 种</span></div>
-        {filteredMedicines.length === 0 ? (
-          <div className="empty-state">
-            <div className="empty-state-icon"><PillIcon size={36} /></div>
-            <h3>{searchQuery || currentFilter !== 'all' ? '没有找到匹配的药品' : '还没有记录药品'}</h3>
-            <p>{searchQuery || currentFilter !== 'all' ? '试试其他关键词或筛选条件' : '点击右下角 + 号，拍照或上传药品图片开始记录'}</p>
-          </div>
-        ) : (
-          <div className="med-grid">
-            {filteredMedicines.map((med, index) => {
-              const exp = getExpireStatus(med.expireDate);
-              return (
-                <div key={med.id} className="med-card" style={{ animationDelay: `${Math.min(index * 0.05, 0.3)}s` }} onClick={() => { setDetailMed(med); setShowDetailModal(true); }}>
-                  <div className="med-card-img">
-                    {med.image ? (<img src={med.image} alt={med.name} loading="lazy" />) : (<div className="placeholder"><PillIcon size={48} /><span>暂无图片</span></div>)}
-                    {exp.status !== 'unknown' && <span className={`med-badge ${exp.class}`}>{exp.label}</span>}
+
+        {/* ===== 搜索 Tab ===== */}
+        {activeTab === 'search' && (
+          <div className="tab-content">
+            <div className="search-tab-section">
+              <h3 className="search-tab-title">智能搜索</h3>
+              <div className="search-tab-cards">
+                <div className="search-tab-card" onClick={() => { setAiInput(''); setAiResults([]); setShowAiModal(true); }}>
+                  <div className="search-tab-card-icon purple"><SparklesIcon size={24} /></div>
+                  <div className="search-tab-card-text">
+                    <h4>AI 关键词</h4>
+                    <p>输入症状，AI 生成搜索关键词</p>
                   </div>
-                  <div className="med-card-body">
-                    <div className="med-card-name">{med.name}{med.type === 'rx' && <span className="rx">Rx</span>}</div>
-                    <div className="med-card-effect">{med.effect || '暂无功效描述'}</div>
-                    {med.tags && med.tags.length > 0 && (<div className="med-card-tags">{med.tags.slice(0, 3).map((tag, i) => (<span key={i} className="med-tag">{tag}</span>))}</div>)}
-                    <div className="med-card-meta"><span className="date"><CalendarIcon size={13} />{formatDate(med.expireDate)}</span><span className="type">{getTypeLabel(med.type)}</span></div>
-                  </div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
                 </div>
-              );
-            })}
+                <div className="search-tab-card" onClick={() => { setCameraResults([]); setShowCameraModal(true); }}>
+                  <div className="search-tab-card-icon teal"><CameraIcon size={24} /></div>
+                  <div className="search-tab-card-text">
+                    <h4>以图搜药</h4>
+                    <p>拍照搜索已记录的相似药品</p>
+                  </div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                </div>
+              </div>
+            </div>
+            <div className="search-tab-section">
+              <h3 className="search-tab-title">热门搜索</h3>
+              <div className="search-hot-tags">
+                {['感冒', '退烧', '止痛', '肠胃', '消炎', '维生素', '过敏', '咳嗽', '头痛', '消化不良'].map((tag, i) => (
+                  <button key={i} className="search-hot-tag" onClick={() => { setSearchQuery(tag); setActiveTab('home'); }}>{tag}</button>
+                ))}
+              </div>
+            </div>
+            {cameraLoading && (<div className="ai-loading"><div className="spinner"></div><p>正在以图搜药…</p></div>)}
+          </div>
+        )}
+
+        {/* ===== 设置 Tab ===== */}
+        {activeTab === 'settings' && (
+          <div className="tab-content">
+            {/* 数据统计 */}
+            <div className="settings-group">
+              <h3 className="settings-group-title">数据统计</h3>
+              <div className="settings-stats-grid">
+                <div className="settings-stat-card"><div className="settings-stat-num">{stats.total}</div><div className="settings-stat-label">药品总数</div></div>
+                <div className="settings-stat-card danger"><div className="settings-stat-num">{stats.expired}</div><div className="settings-stat-label">已过期</div></div>
+                <div className="settings-stat-card warning"><div className="settings-stat-num">{stats.expiring}</div><div className="settings-stat-label">即将过期</div></div>
+                <div className="settings-stat-card"><div className="settings-stat-num">{stats.totalImageSizeMB}</div><div className="settings-stat-label">图片(MB)</div></div>
+              </div>
+            </div>
+
+            {/* AI 识别 */}
+            <div className="settings-group">
+              <h3 className="settings-group-title">AI 药品识别</h3>
+              <div className="settings-ai-card">
+                <div className="settings-ai-header">
+                  <div className="settings-ai-status">
+                    <span className={`settings-ai-dot ${aiConfig.enabled ? 'active' : ''}`}></span>
+                    <span className="settings-ai-status-text">{aiConfig.enabled ? `已启用 · ${getProviderName(aiConfig.provider)}` : '未启用'}</span>
+                  </div>
+                  <label className="settings-switch">
+                    <input type="checkbox" checked={aiConfigDraft.enabled} onChange={(e) => setAiConfigDraft((prev) => ({ ...prev, enabled: e.target.checked }))} />
+                    <span className="settings-switch-slider"></span>
+                  </label>
+                </div>
+                {aiConfigDraft.enabled && (
+                  <div className="settings-ai-body">
+                    <div className="form-group">
+                      <label className="form-label">选择 AI 服务商</label>
+                      <select className="form-select" value={aiConfigDraft.provider} onChange={(e) => setAiConfigDraft((prev) => ({ ...prev, provider: e.target.value }))}>
+                        <option value="">请选择…</option>
+                        <option value="zhipu">智谱 GLM-4V（国内直连，推荐）</option>
+                        <option value="gemini">Google Gemini（需科学上网）</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">API Key</label>
+                      <input type="password" className="form-input" placeholder="请输入 API Key" value={aiConfigDraft.apiKey} onChange={(e) => setAiConfigDraft((prev) => ({ ...prev, apiKey: e.target.value }))} />
+                      {aiConfigDraft.provider && (
+                        <p className="form-hint"><a href={getProviderSignupUrl(aiConfigDraft.provider)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>点此免费申请 {getProviderName(aiConfigDraft.provider)} API Key</a></p>
+                      )}
+                    </div>
+                    <button className="btn btn-primary btn-block btn-sm" onClick={handleSaveAIConfig} style={{ marginTop: 8 }}>保存 AI 配置</button>
+                  </div>
+                )}
+                {!aiConfigDraft.enabled && (<p className="settings-ai-hint">启用后，拍照将直接调用 AI 多模态模型识别药品信息，准确度更高。API Key 仅保存在本地浏览器。</p>)}
+              </div>
+            </div>
+
+            {/* 数据管理 */}
+            <div className="settings-group">
+              <h3 className="settings-group-title">数据管理</h3>
+              <div className="settings-list">
+                <button className="settings-list-item" onClick={handleExport}>
+                  <div className="settings-list-icon teal"><UploadIcon size={18} /></div>
+                  <div className="settings-list-text"><h4>导出数据备份</h4><p>导出所有药品数据为 JSON 文件</p></div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+                <button className="settings-list-item" onClick={() => importFileRef.current?.click()} disabled={importing}>
+                  <div className="settings-list-icon blue"><ImageIcon size={18} /></div>
+                  <div className="settings-list-text"><h4>{importing ? '导入中…' : '导入数据备份'}</h4><p>从 JSON 文件恢复药品数据</p></div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+                <input ref={importFileRef} type="file" accept=".json,application/json" style={{ display: 'none' }} onChange={handleImport} />
+                <button className="settings-list-item danger" onClick={handleDeleteExpired}>
+                  <div className="settings-list-icon red"><TrashIcon size={18} /></div>
+                  <div className="settings-list-text"><h4>清理过期药品</h4><p>删除所有已过期的药品（{expiredCount} 种）</p></div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+              </div>
+            </div>
+
+            {/* 账号 */}
+            <div className="settings-group">
+              <h3 className="settings-group-title">账号</h3>
+              <div className="settings-list">
+                <button className="settings-list-item danger" onClick={handleLogout}>
+                  <div className="settings-list-icon red"><ShieldIcon size={18} /></div>
+                  <div className="settings-list-text"><h4>退出登录</h4><p>需要重新输入密码才能访问</p></div>
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg>
+                </button>
+              </div>
+            </div>
+            <p className="settings-footer-hint">数据保存在本地浏览器，清除浏览器数据会丢失，请定期导出备份。</p>
           </div>
         )}
       </div>
 
-      <button className="fab" onClick={openAddModal}><PlusIcon size={28} /></button>
+      {/* 底部 Tab 导航 */}
+      <nav className="app-tabbar">
+        <div className="app-tabbar-inner">
+          <button className={`app-tab ${activeTab === 'home' ? 'active' : ''}`} onClick={() => setActiveTab('home')}>
+            <div className="app-tab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21V5a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v16"/><path d="M19 21H5"/><path d="M9 7h6"/><path d="M9 11h6"/><path d="M9 15h4"/></svg></div>
+            <span className="app-tab-label">药盒</span>
+          </button>
+          <button className={`app-tab ${activeTab === 'search' ? 'active' : ''}`} onClick={() => setActiveTab('search')}>
+            <div className="app-tab-icon"><SearchIcon size={22} /></div>
+            <span className="app-tab-label">搜索</span>
+          </button>
+          <div className="app-tab-spacer"></div>
+          <button className={`app-tab ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
+            <div className="app-tab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>
+            <span className="app-tab-label">设置</span>
+          </button>
+        </div>
+        {/* 中间凸起添加按钮 */}
+        <button className="app-fab-center" onClick={openAddModal}>
+          <PlusIcon size={28} />
+        </button>
+      </nav>
 
       {/* 添加/编辑弹窗 */}
       {showAddModal && (
