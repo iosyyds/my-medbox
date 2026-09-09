@@ -82,7 +82,7 @@ body::before {
 /* ===== 顶部 Header ===== */
 .app-header {
   position: sticky; top: 0; z-index: 100;
-  background: rgba(248, 250, 252, 0.88);
+  background: rgba(248, 250, 252, 0.92);
   backdrop-filter: blur(20px) saturate(180%);
   -webkit-backdrop-filter: blur(20px) saturate(180%);
   border-bottom: 1px solid rgba(0, 0, 0, 0.04);
@@ -120,12 +120,18 @@ body::before {
 .app-stat-label { display: block; font-size: 10px; color: var(--text-light); margin-top: 3px; font-weight: 600; }
 
 /* ===== 内容区域 ===== */
-.app-content { max-width: 720px; margin: 0 auto; padding: 18px 20px 0; }
-.tab-content { animation: tabFadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
+.app-content { max-width: 720px; margin: 0 auto; padding: 16px 20px 0; }
+.tab-content { animation: tabFadeIn 0.25s ease; }
 @keyframes tabFadeIn {
-  from { opacity: 0; transform: translateY(14px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
+/* 统一每个Tab第一个元素的顶部间距 */
+.tab-content > *:first-child { margin-top: 0; }
+.tab-content .app-search-bar { margin-bottom: 16px; }
+.tab-content .search-tab-section { margin-bottom: 24px; }
+.tab-content .settings-group { margin-bottom: 20px; }
+.tab-content .settings-group:first-child { margin-top: 0; }
 
 /* ===== 搜索栏 ===== */
 .app-search-bar { display: flex; gap: 10px; align-items: center; margin-bottom: 18px; }
