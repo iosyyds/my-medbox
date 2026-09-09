@@ -12,6 +12,7 @@ import {
 } from '@/lib/storage';
 import { compressImage, computeImageHash, searchByImage } from '@/lib/imageUtils';
 import { generateKeywords } from '@/lib/keywords';
+import { recognizeMedicine } from '@/lib/ocr';
 
 export default function Home() {
   const [medicines, setMedicines] = useState([]);
@@ -29,6 +30,11 @@ export default function Home() {
   const [aiLoading, setAiLoading] = useState(false);
   const [cameraResults, setCameraResults] = useState([]);
   const [cameraLoading, setCameraLoading] = useState(false);
+  const [recognizing, setRecognizing] = useState(false);
+  const [recognizeProgress, setRecognizeProgress] = useState(0);
+  const [recognizeStatus, setRecognizeStatus] = useState('');
+  const [recognizedText, setRecognizedText] = useState('');
+
   const [formData, setFormData] = useState({
     name: '', type: 'otc', expireDate: '', effect: '', usage: '',
     taboo: '', factory: '', tags: '', note: '', image: null, imageFeature: null,
@@ -95,7 +101,45 @@ export default function Home() {
       const compressed = await compressImage(file);
       const feature = await computeImageHash(compressed);
       setFormData((prev) => ({ ...prev, image: compressed, imageFeature: feature }));
-      showToast('图片上传成功', 'success');
+      showToast('图片上传成功，正在识别药品…', 'success');
+
+      setRecognizing(true);
+      setRecognizeProgress(0);
+      setRecognizeStatus('开始识别');
+      setRecognizedText('');
+
+      try {
+        const result = await recognizeMedicine(compressed, (progress, status) => {
+          setRecognizeProgress(Math.round(progress * 100));
+          setRecognizeStatus(status);
+        });
+
+        setRecognizedText(result.text);
+
+        if (result.medicine) {
+          const med = result.medicine;
+          setFormData((prev) => ({
+            ...prev,
+            name: prev.name || med.name,
+            type: med.type,
+            effect: prev.effect || med.effect,
+            usage: prev.usage || med.usage,
+            taboo: prev.taboo || med.taboo,
+            factory: prev.factory || med.factory,
+            tags: prev.tags || med.tags.join(', '),
+          }));
+          showToast(`识别成功：${med.name}，信息已自动填充`, 'success');
+        } else {
+          showToast('识别完成，未匹配到常用药品，可手动填写', '');
+        }
+      } catch (err) {
+        console.error('识别失败:', err);
+        showToast('药品识别失败，可手动填写信息', 'error');
+      } finally {
+        setRecognizing(false);
+        setRecognizeProgress(0);
+        setRecognizeStatus('');
+      }
     } catch (err) {
       showToast('图片处理失败，请重试', 'error');
     }
@@ -282,21 +326,49 @@ export default function Home() {
                 {formData.image ? (
                   <div className="upload-preview">
                     <img src={formData.image} alt="预览" />
-                    <button className="upload-remove" onClick={(e) => { e.stopPropagation(); setFormData((prev) => ({ ...prev, image: null, imageFeature: null })); }}><CloseIcon size={16} /></button>
+                    <button className="upload-remove" onClick={(e) => { e.stopPropagation(); setFormData((prev) => ({ ...prev, image: null, imageFeature: null })); setRecognizedText(''); }}>
+                      <CloseIcon size={16} />
+                    </button>
                   </div>
                 ) : (
                   <div className="upload-area" onClick={() => fileInputRef.current?.click()}>
                     <div className="upload-area-icon"><CameraIcon size={24} /></div>
                     <p><strong>点击拍照</strong> 或选择图片上传</p>
-                    <p className="hint">支持药盒、说明书照片，自动压缩优化</p>
+                    <p className="hint">拍照后自动识别药品名称、功效、用法等信息</p>
                   </div>
                 )}
                 <input ref={fileInputRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleImageUpload} />
+
+                {recognizing && (
+                  <div className="recognize-progress">
+                    <div className="recognize-progress-header">
+                      <ScanIcon size={16} />
+                      <span>{recognizeStatus || '正在识别…'}</span>
+                      <span className="recognize-progress-num">{recognizeProgress}%</span>
+                    </div>
+                    <div className="recognize-progress-bar">
+                      <div className="recognize-progress-fill" style={{ width: `${recognizeProgress}%` }}></div>
+                    </div>
+                    <p className="recognize-hint">AI正在识别药盒文字并匹配药品信息，请稍候…</p>
+                  </div>
+                )}
+
+                {recognizedText && !recognizing && (
+                  <div className="recognized-text">
+                    <div className="recognized-text-header">
+                      <ImageIcon size={14} />
+                      <span>识别到的文字</span>
+                    </div>
+                    <p className="recognized-text-content">{recognizedText.slice(0, 200)}{recognizedText.length > 200 ? '…' : ''}</p>
+                  </div>
+                )}
               </div>
+
               <div className="form-group">
                 <label className="form-label">药品名称 <span className="required">*</span></label>
                 <input type="text" className="form-input" placeholder="如：布洛芬缓释胶囊" value={formData.name} onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))} />
               </div>
+
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">药品类型</label>
@@ -313,14 +385,17 @@ export default function Home() {
                   <input type="date" className="form-input" value={formData.expireDate} onChange={(e) => setFormData((prev) => ({ ...prev, expireDate: e.target.value }))} />
                 </div>
               </div>
+
               <div className="form-group">
                 <label className="form-label">主要功效 / 适用症状</label>
                 <textarea className="form-textarea" placeholder="如：用于缓解轻至中度疼痛，如头痛、关节痛、偏头痛、牙痛、肌肉痛、神经痛、痛经；也用于普通感冒或流行性感冒引起的发热" value={formData.effect} onChange={(e) => setFormData((prev) => ({ ...prev, effect: e.target.value }))} />
               </div>
+
               <div className="form-group">
                 <label className="form-label">用法用量</label>
                 <textarea className="form-textarea" placeholder="如：口服。成人一次1粒，一日2次（早晚各一次）" value={formData.usage} onChange={(e) => setFormData((prev) => ({ ...prev, usage: e.target.value }))} />
               </div>
+
               <div className="form-row">
                 <div className="form-group">
                   <label className="form-label">禁忌人群</label>
@@ -331,11 +406,13 @@ export default function Home() {
                   <input type="text" className="form-input" placeholder="如：中美天津史克制药" value={formData.factory} onChange={(e) => setFormData((prev) => ({ ...prev, factory: e.target.value }))} />
                 </div>
               </div>
+
               <div className="form-group">
                 <label className="form-label">搜索标签（逗号分隔）</label>
                 <input type="text" className="form-input" placeholder="如：止痛,退烧,感冒,头痛,发热" value={formData.tags} onChange={(e) => setFormData((prev) => ({ ...prev, tags: e.target.value }))} />
                 <p className="form-hint">用于快速搜索，可填写症状、功效等关键词</p>
               </div>
+
               <div className="form-group">
                 <label className="form-label">备注</label>
                 <textarea className="form-textarea" placeholder="其他需要记录的信息" value={formData.note} onChange={(e) => setFormData((prev) => ({ ...prev, note: e.target.value }))} />
@@ -368,18 +445,21 @@ export default function Home() {
                   {getExpireStatus(detailMed.expireDate).days !== null && `（${getExpireStatus(detailMed.expireDate).days >= 0 ? '还剩' : '已过'} ${Math.abs(getExpireStatus(detailMed.expireDate).days)} 天）`}
                 </span>
               </div>
+
               {detailMed.effect && (
                 <div className="detail-section">
                   <div className="detail-section-title"><CheckIcon size={15} />主要功效 / 适用症状</div>
                   <div className="detail-section-content">{detailMed.effect}</div>
                 </div>
               )}
+
               {detailMed.usage && (
                 <div className="detail-section">
                   <div className="detail-section-title"><ClockIcon size={15} />用法用量</div>
                   <div className="detail-section-content">{detailMed.usage}</div>
                 </div>
               )}
+
               <div className="form-row">
                 {detailMed.taboo && (
                   <div className="detail-section">
@@ -394,18 +474,21 @@ export default function Home() {
                   </div>
                 )}
               </div>
+
               {detailMed.expireDate && (
                 <div className="detail-section">
                   <div className="detail-section-title"><CalendarIcon size={15} />保质期</div>
                   <div className="detail-section-content">{formatDate(detailMed.expireDate)}</div>
                 </div>
               )}
+
               {detailMed.tags && detailMed.tags.length > 0 && (
                 <div className="detail-section">
                   <div className="detail-section-title"><TagIcon size={15} />搜索标签</div>
                   <div className="detail-tags">{detailMed.tags.map((tag, i) => <span key={i} className="med-tag">{tag}</span>)}</div>
                 </div>
               )}
+
               {detailMed.note && (
                 <div className="detail-section">
                   <div className="detail-section-title"><NoteIcon size={15} />备注</div>
@@ -434,9 +517,11 @@ export default function Home() {
                 <input type="text" className="form-input" placeholder="如：布洛芬 / 头痛发烧 / 胃不舒服" value={aiInput} onChange={(e) => setAiInput(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && handleAiGenerate()} />
               </div>
               <button className="btn btn-primary btn-block" onClick={handleAiGenerate} style={{ marginBottom: 16 }}><SparklesIcon size={17} />生成搜索关键词</button>
+
               {aiLoading && (
                 <div className="ai-loading"><div className="spinner"></div><p>AI 正在分析并生成关键词…</p></div>
               )}
+
               {aiResults.length > 0 && (
                 <div className="keyword-list">
                   {aiResults.map((kw, i) => (
@@ -467,9 +552,11 @@ export default function Home() {
                 <p className="hint">智能识别，在已记录药品中匹配相似图片</p>
               </div>
               <input ref={cameraFileInputRef} type="file" accept="image/*" capture="environment" style={{ display: 'none' }} onChange={handleCameraSearch} />
+
               {cameraLoading && (
                 <div className="ai-loading" style={{ marginTop: 20 }}><div className="spinner"></div><p>正在识别图片并匹配药品…</p></div>
               )}
+
               {cameraResults.length > 0 && (
                 <div style={{ marginTop: 20 }}>
                   <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginBottom: 12 }}>找到 {cameraResults.length} 个相似药品：</p>
