@@ -38,7 +38,6 @@ export default function Home() {
   const [passwordLoading, setPasswordLoading] = useState(false);
   const [medicines, setMedicines] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentFilter, setCurrentFilter] = useState('all');
   const [sortBy, setSortBy] = useState('expire');
   const [showAddModal, setShowAddModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
@@ -281,11 +280,6 @@ export default function Home() {
         return searchText.includes(q);
       });
     }
-    if (currentFilter === 'valid') result = result.filter((m) => getExpireStatus(m.expireDate).status === 'good');
-    else if (currentFilter === 'expiring') result = result.filter((m) => getExpireStatus(m.expireDate).status === 'expiring');
-    else if (currentFilter === 'expired') result = result.filter((m) => getExpireStatus(m.expireDate).status === 'expired');
-    else if (currentFilter === 'otc') result = result.filter((m) => m.type === 'otc');
-    else if (currentFilter === 'rx') result = result.filter((m) => m.type === 'rx');
 
     const order = { expired: 0, expiring: 1, unknown: 2, good: 3 };
     if (sortBy === 'expire') {
@@ -303,7 +297,7 @@ export default function Home() {
       result.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
     }
     return result;
-  }, [medicines, debouncedSearch, currentFilter, sortBy]);
+  }, [medicines, debouncedSearch, sortBy]);
 
   const resetForm = () => {
     setFormData({ name: '', type: 'otc', expireDate: '', effect: '', usage: '', taboo: '', factory: '', tags: '', note: '', image: null, imageFeature: null });
@@ -492,11 +486,6 @@ export default function Home() {
 
   const viewFromCameraResult = (med) => { setDetailMed(med); setShowCameraModal(false); setShowDetailModal(true); };
 
-  const filters = [
-    { key: 'all', label: '全部' }, { key: 'valid', label: '在有效期内' },
-    { key: 'expiring', label: '即将过期' }, { key: 'expired', label: '已过期' },
-    { key: 'otc', label: '非处方药' }, { key: 'rx', label: '处方药' },
-  ];
   const sortOptions = [
     { key: 'expire', label: '按过期时间' }, { key: 'name', label: '按名称' }, { key: 'date', label: '按添加时间' },
   ];
@@ -567,11 +556,6 @@ export default function Home() {
               <button className="app-search-ai" onClick={() => { setAiInput(searchQuery); setAiResults([]); setShowAiModal(true); }} title="AI关键词"><SparklesIcon size={18} /></button>
             </div>
 
-            {/* 筛选标签 */}
-            <div className="app-filter-bar">
-              {filters.map((f) => (<button key={f.key} className={`app-filter-chip ${currentFilter === f.key ? 'active' : ''}`} onClick={() => setCurrentFilter(f.key)}>{f.label}</button>))}
-            </div>
-
             {/* 过期提醒 */}
             {expiredCount + expiringCount > 0 && (
               <div className="app-expire-banner" onClick={handleDeleteExpired}>
@@ -590,8 +574,8 @@ export default function Home() {
             {filteredMedicines.length === 0 ? (
               <div className="app-empty">
                 <div className="app-empty-icon"><PillIcon size={40} /></div>
-                <h3>{searchQuery || currentFilter !== 'all' ? '没有找到匹配的药品' : '还没有记录药品'}</h3>
-                <p>{searchQuery || currentFilter !== 'all' ? '试试其他关键词或筛选条件' : '点击下方 + 号，拍照记录你的第一种药品'}</p>
+                <h3>{searchQuery ? '没有找到匹配的药品' : '还没有记录药品'}</h3>
+                <p>{searchQuery ? '试试其他关键词' : '点击下方添加按钮，拍照记录你的第一种药品'}</p>
               </div>
             ) : (
               <div className="app-med-list">
@@ -782,7 +766,7 @@ export default function Home() {
             <span className="app-tab-label">搜索</span>
           </button>
           <button className="app-tab-add" onClick={openAddModal}>
-            <PlusIcon size={26} />
+            <span className="app-tab-add-text">添加</span>
           </button>
           <button className={`app-tab ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')}>
             <div className="app-tab-icon"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></div>

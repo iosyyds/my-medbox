@@ -160,24 +160,6 @@ body::before {
 .app-search-ai:hover { transform: translateY(-2px) scale(1.05); box-shadow: 0 6px 20px rgba(139, 92, 246, 0.45); }
 .app-search-ai:active { transform: scale(0.95); }
 
-/* ===== 筛选标签 ===== */
-.app-filter-bar {
-  display: flex; gap: 8px; overflow-x: auto; -webkit-overflow-scrolling: touch;
-  scrollbar-width: none; margin-bottom: 18px; padding-bottom: 4px;
-}
-.app-filter-bar::-webkit-scrollbar { display: none; }
-.app-filter-chip {
-  padding: 9px 18px; border-radius: var(--radius-full); font-size: 13px; font-weight: 600;
-  background: var(--card); color: var(--text-secondary); border: 1.5px solid var(--border);
-  white-space: nowrap; transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-  flex-shrink: 0; box-shadow: var(--shadow-xs); cursor: pointer; letter-spacing: 0.2px;
-}
-.app-filter-chip:hover { border-color: var(--primary-light); color: var(--primary); transform: translateY(-2px); box-shadow: var(--shadow-sm); }
-.app-filter-chip.active {
-  background: var(--primary-gradient); color: #fff; border-color: transparent;
-  box-shadow: var(--shadow-primary); transform: translateY(-2px);
-}
-
 /* ===== 过期提醒横幅 ===== */
 .app-expire-banner {
   display: flex; align-items: center; gap: 12px; padding: 16px 18px;
@@ -282,14 +264,13 @@ body::before {
   pointer-events: none;
 }
 .app-tabbar-inner {
-  max-width: 720px; margin: 0 auto; height: 68px;
+  max-width: 720px; margin: 0 auto 12px; height: 68px;
   display: flex; align-items: center; justify-content: space-around;
   background: rgba(255, 255, 255, 0.94);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid rgba(0, 0, 0, 0.06);
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.08);
-  margin: 0 16px 12px;
   border-radius: 24px;
   pointer-events: auto;
   position: relative;
@@ -314,18 +295,21 @@ body::before {
   background: var(--primary-bg);
 }
 .app-tab-label { font-size: 10px; font-weight: 600; letter-spacing: 0.5px; }
-/* 中间添加按钮（整合到导航栏内部） */
+/* 中间添加按钮（整合到导航栏内部，文字样式） */
 .app-tab-add {
-  width: 52px; height: 52px; border-radius: 50%; border: 3px solid #fff;
+  min-width: 64px; height: 40px; padding: 0 16px; border-radius: 20px; border: none;
   background: var(--primary-gradient); color: #fff; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 6px 20px rgba(16, 185, 129, 0.45);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.4);
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0; z-index: 2;
   margin: 0 4px;
 }
-.app-tab-add:hover { transform: translateY(-4px) scale(1.08); box-shadow: 0 10px 28px rgba(16, 185, 129, 0.55); }
-.app-tab-add:active { transform: scale(0.92); }
+.app-tab-add-text {
+  font-size: 14px; font-weight: 700; letter-spacing: 1px; white-space: nowrap;
+}
+.app-tab-add:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(16, 185, 129, 0.5); }
+.app-tab-add:active { transform: scale(0.95); }
 
 /* ===== 搜索 Tab ===== */
 .search-tab-section { margin-bottom: 28px; }
@@ -696,7 +680,6 @@ body::before {
   .app-content { padding: 16px 16px 0; }
   .app-search-input-wrap { height: 48px; padding: 0 16px; border-radius: 16px; }
   .app-search-ai { width: 48px; height: 48px; border-radius: 16px; }
-  .app-filter-chip { padding: 8px 16px; font-size: 12px; }
   .app-med-card { padding: 12px; gap: 12px; }
   .app-med-img { width: 60px; height: 60px; border-radius: 14px; }
   .app-med-name { font-size: 14px; }
@@ -719,7 +702,8 @@ body::before {
   .app-empty { padding: 50px 16px; }
   .app-empty-icon { width: 84px; height: 84px; }
   .app-tabbar-inner { margin: 0 12px 10px; height: 64px; border-radius: 22px; padding: 0 8px; }
-  .app-tab-add { width: 48px; height: 48px; }
+  .app-tab-add { min-width: 56px; height: 36px; padding: 0 12px; }
+  .app-tab-add-text { font-size: 13px; }
 }
 
 @media (max-width: 360px) {
@@ -727,7 +711,6 @@ body::before {
   .app-stat-mini { padding: 5px 9px; min-width: 46px; }
   .app-stat-num { font-size: 16px; }
   .app-search-input { font-size: 14px; }
-  .app-filter-chip { padding: 7px 14px; font-size: 11px; }
 }
 
 /* 平板和电脑端 */
