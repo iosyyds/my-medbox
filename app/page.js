@@ -45,6 +45,8 @@ export default function Home() {
   const [showAiModal, setShowAiModal] = useState(false);
   const [showCameraModal, setShowCameraModal] = useState(false);
   const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showImagePreview, setShowImagePreview] = useState(false);
+  const [previewImage, setPreviewImage] = useState('');
   const [editingMed, setEditingMed] = useState(null);
   const [detailMed, setDetailMed] = useState(null);
   const [toast, setToast] = useState({ show: false, message: '', type: '' });
@@ -675,7 +677,7 @@ export default function Home() {
               <div className="form-group">
                 <label className="form-label">药品图片</label>
                 {formData.image ? (
-                  <div className="upload-preview">
+                  <div className="upload-preview" onClick={() => { setPreviewImage(formData.image); setShowImagePreview(true); }}>
                     <img src={formData.image} alt="预览" />
                     <button className="upload-remove" onClick={(e) => { e.stopPropagation(); setFormData((prev) => ({ ...prev, image: null, imageFeature: null })); setAiResult(null); setRecognizeError(''); }}><CloseIcon size={16} /></button>
                   </div>
@@ -743,7 +745,7 @@ export default function Home() {
           <div className="modal">
             <div className="modal-header"><h3>药品详情</h3><button className="modal-close" onClick={() => setShowDetailModal(false)}><CloseIcon size={20} /></button></div>
             <div className="modal-body">
-              <div className="detail-img">{detailMed.image ? (<img src={detailMed.image} alt={detailMed.name} />) : (<div className="placeholder"><PillIcon size={64} /></div>)}</div>
+              <div className="detail-img" onClick={() => { if (detailMed.image) { setPreviewImage(detailMed.image); setShowImagePreview(true); } }}>{detailMed.image ? (<img src={detailMed.image} alt={detailMed.name} />) : (<div className="placeholder"><PillIcon size={64} /></div>)}</div>
               <div className="detail-name">{detailMed.name}</div>
               <div className="detail-sub"><span>{getTypeLabel(detailMed.type)}</span><span>·</span><span className={`status-${getExpireStatus(detailMed.expireDate).status}`}>{getExpireStatus(detailMed.expireDate).label}{getExpireStatus(detailMed.expireDate).days !== null && `（${getExpireStatus(detailMed.expireDate).days >= 0 ? '还剩' : '已过'} ${Math.abs(getExpireStatus(detailMed.expireDate).days)} 天）`}</span></div>
               {detailMed.effect && (<div className="detail-section"><div className="detail-section-title"><CheckIcon size={15} />主要功效 / 适用症状</div><div className="detail-section-content">{detailMed.effect}</div></div>)}
@@ -837,6 +839,14 @@ export default function Home() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* 图片预览弹窗 */}
+      {showImagePreview && (
+        <div className="image-preview-overlay show" onClick={() => setShowImagePreview(false)}>
+          <button className="image-preview-close" onClick={() => setShowImagePreview(false)}><CloseIcon size={24} /></button>
+          <img src={previewImage} alt="预览大图" className="image-preview-img" onClick={(e) => e.stopPropagation()} />
         </div>
       )}
 

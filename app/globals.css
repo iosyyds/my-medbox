@@ -751,3 +751,41 @@ table { max-width: 100%; overflow-x: auto; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; animation-iteration-count: 1 !important; transition-duration: 0.01ms !important; }
 }
+
+/* ===== 图片预览弹窗 ===== */
+.image-preview-overlay {
+  position: fixed; inset: 0; background: rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  z-index: 9999; display: none; align-items: center; justify-content: center;
+  animation: fadeIn 0.25s ease;
+}
+.image-preview-overlay.show { display: flex; }
+.image-preview-img {
+  max-width: 92vw; max-height: 88vh; object-fit: contain;
+  border-radius: 12px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+  animation: imageZoomIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  pointer-events: auto !important;
+}
+@keyframes imageZoomIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
+}
+.image-preview-close {
+  position: absolute; top: 20px; right: 20px;
+  width: 48px; height: 48px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.15); backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2); color: #fff;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: all 0.25s ease; z-index: 10;
+}
+.image-preview-close:hover { background: rgba(255, 255, 255, 0.25); transform: rotate(90deg); }
+.image-preview-close:active { transform: scale(0.9); }
+
+/* 药品详情图片可点击提示 */
+.detail-img { cursor: zoom-in; position: relative; }
+.detail-img::after {
+  content: ''; position: absolute; inset: 0; background: transparent;
+  transition: background 0.2s ease; border-radius: inherit;
+}
+.detail-img:hover::after { background: rgba(0, 0, 0, 0.08); }
+.upload-preview { cursor: zoom-in; }
