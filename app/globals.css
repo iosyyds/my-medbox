@@ -41,9 +41,13 @@ html {
   font-size: 16px;
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  overflow-x: hidden;
+  overflow-x: hidden !important;
   width: 100%;
   max-width: 100vw;
+  /* 强制阻止缩放 */
+  touch-action: pan-y;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 body {
@@ -56,13 +60,24 @@ body {
   padding-bottom: 100px;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  overflow-x: hidden;
+  overflow-x: hidden !important;
   width: 100%;
   max-width: 100vw;
-  /* 防止双击缩放和双指缩放 */
-  touch-action: manipulation;
+  position: relative;
+  /* 防止双击缩放和双指缩放，只允许垂直滚动 */
+  touch-action: pan-y;
   -webkit-touch-callout: none;
   overscroll-behavior-x: none;
+  overscroll-behavior-y: contain;
+}
+
+/* 允许输入框和文本域选择文字 */
+input,
+textarea,
+select {
+  -webkit-user-select: text;
+  user-select: text;
+  touch-action: auto;
 }
 
 /* 所有元素不允许超出视口宽度 */
@@ -75,6 +90,13 @@ nav,
 article,
 aside {
   max-width: 100%;
+  overflow-x: hidden;
+}
+
+main {
+  overflow-x: hidden !important;
+  width: 100%;
+  max-width: 100vw;
 }
 
 img,
@@ -1015,6 +1037,104 @@ a {
   height: 12px;
 }
 
+/* 识别结果卡片 */
+.recognize-result {
+  margin-top: 12px;
+  padding: 14px;
+  background: linear-gradient(135deg, #ecfdf5 0%, #f0fdfa 100%);
+  border-radius: 12px;
+  border: 1.5px solid #6ee7b7;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.recognize-result-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.recognize-result-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--primary);
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.recognize-result-icon svg {
+  width: 18px;
+  height: 18px;
+}
+
+.recognize-result-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.recognize-result-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #065f46;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recognize-result-sub {
+  font-size: 12px;
+  color: #047857;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 一键填充按钮 */
+.btn-auto-fill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: linear-gradient(135deg, var(--primary) 0%, #0d9488 100%);
+  color: #fff;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 700;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(13, 148, 136, 0.3);
+  transition: all 0.15s;
+}
+
+.btn-auto-fill:active {
+  transform: scale(0.95);
+  box-shadow: 0 1px 4px rgba(13, 148, 136, 0.2);
+}
+
+.btn-auto-fill svg {
+  width: 15px;
+  height: 15px;
+}
+
 /* 按钮 */
 .btn {
   padding: 13px 20px;
@@ -1357,6 +1477,41 @@ a {
   background: var(--danger);
 }
 
+/* ===== 底部导航（可选） ===== */
+.bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: var(--card);
+  border-top: 1px solid var(--border-light);
+  display: flex;
+  justify-content: space-around;
+  padding: 8px 0 calc(env(safe-area-inset-bottom, 0) + 8px);
+  z-index: 80;
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.04);
+}
+
+.bottom-nav-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 6px 16px;
+  color: var(--text-light);
+  font-size: 11px;
+  transition: color 0.15s;
+}
+
+.bottom-nav-item.active {
+  color: var(--primary);
+}
+
+.bottom-nav-item svg {
+  width: 22px;
+  height: 22px;
+}
+
 /* ===== 响应式 ===== */
 @media (min-width: 640px) {
   .modal-overlay {
@@ -1390,5 +1545,60 @@ a {
   .header {
     padding-left: max(16px, env(safe-area-inset-left));
     padding-right: max(16px, env(safe-area-inset-right));
+  }
+}
+
+/* 超小屏优化（防止横向溢出） */
+@media (max-width: 480px) {
+  .btn-ai span {
+    display: none;
+  }
+
+  .btn-ai {
+    padding: 10px 12px;
+  }
+
+  .search-bar {
+    padding: 5px 5px 5px 12px;
+    gap: 6px;
+  }
+
+  .search-input {
+    font-size: 14px;
+  }
+
+  .logo-text {
+    font-size: 18px;
+  }
+
+  .logo-sub {
+    font-size: 11px;
+  }
+
+  .stat-num {
+    font-size: 18px;
+  }
+
+  .recognize-result {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .btn-auto-fill {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .modal {
+    border-radius: 20px 20px 0 0;
+    max-height: 92vh;
+  }
+
+  .fab {
+    right: 16px;
+    bottom: 20px;
+    width: 52px;
+    height: 52px;
   }
 }
