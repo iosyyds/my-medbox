@@ -88,10 +88,28 @@ export default function Home() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      setMedicines(loadMedicines());
+      const localMeds = loadMedicines();
+      setMedicines(localMeds);
       const cfg = getAIConfig();
       setAiConfig(cfg);
       setAiConfigDraft({ apiKey: cfg.isDefault ? '' : cfg.apiKey, enabled: cfg.enabled });
+      // 自动同步拉取（仅本地为空时覆盖）
+      const token = localStorage.getItem(SYNC_TOKEN_KEY);
+      if (token) {
+        setSyncToken(token);
+        fetch(`${SYNC_API_URL}?token=${encodeURIComponent(token)}`)
+          .then(r => r.json())
+          .then(data => {
+            if (data.success && data.medicines && data.medicines.length > 0 && localMeds.length === 0) {
+              saveMedicines(data.medicines);
+              setMedicines(data.medicines);
+            }
+            const now = new Date().toLocaleString('zh-CN');
+            localStorage.setItem(SYNC_TIME_KEY, now);
+            setLastSyncTime(now);
+          })
+          .catch(() => {});
+      }
     }
   }, [isAuthenticated]);
 
@@ -296,9 +314,50 @@ export default function Home() {
     }
   };
 
+  // 自动同步上传（静默，不显示toast）
+  const autoSyncUpload = async (meds) => {
+    if (!syncToken) return;
+    try {
+      await fetch(SYNC_API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: syncToken, medicines: meds }),
+      });
+      const now = new Date().toLocaleString('zh-CN');
+      localStorage.setItem(SYNC_TIME_KEY, now);
+      setLastSyncTime(now);
+    } catch (err) { /* 静默失败 */ }
+  };
+
+  // 自动同步拉取（页面加载时调用，静默）
+  const autoSyncDownload = async () => {
+    if (!syncToken) return;
+    try {
+      const response = await fetch(`${SYNC_API_URL}?token=${encodeURIComponent(syncToken)}`);
+      const data = await response.json();
+      if (data.success && data.medicines && data.medicines.length > 0) {
+        const localEmpty = medicines.length === 0;
+        if (localEmpty) {
+          saveMedicines(data.medicines);
+          setMedicines(data.medicines);
+        }
+        const now = new Date().toLocaleString('zh-CN');
+        localStorage.setItem(SYNC_TIME_KEY, now);
+        setLastSyncTime(now);
+      }
+    } catch (err) { /* 静默失败 */ }
+  };
+
   const stats = useMemo(() => getStats(medicines), [medicines]);
   const expiredCount = stats.expired;
   const expiringCount = stats.expiring;
+  const expiringMedicines = useMemo(() => {
+    return medicines.filter((m) => {
+      if (!m.expireDate) return false;
+      const exp = getExpireStatus(m.expireDate);
+      return exp.class === 'expiring';
+    }).sort((a, b) => new Date(a.expireDate) - new Date(b.expireDate));
+  }, [medicines]);
 
   const filteredMedicines = useMemo(() => {
     let result = [...medicines];
@@ -455,6 +514,7 @@ export default function Home() {
     setMedicines(newMedicines);
     if (!saveMedicines(newMedicines)) showToast('保存失败，存储空间可能不足', 'error');
     closeAddModal(); resetForm();
+    if (syncToken) autoSyncUpload(newMedicines);
   };
 
   const handleDeleteMed = (med) => {
@@ -462,6 +522,7 @@ export default function Home() {
     const newMedicines = medicines.filter((m) => m.id !== med.id);
     setMedicines(newMedicines); saveMedicines(newMedicines);
     setShowDetailModal(false); showToast('已删除', 'success');
+    if (syncToken) autoSyncUpload(newMedicines);
   };
 
   const handleDeleteExpired = () => {
@@ -470,6 +531,7 @@ export default function Home() {
     const { remaining, deletedCount } = deleteExpired(medicines);
     setMedicines(remaining); saveMedicines(remaining);
     showToast(`已删除 ${deletedCount} 个过期药品`, 'success');
+    if (syncToken) autoSyncUpload(remaining);
   };
 
   const handleExport = () => {
@@ -552,25 +614,40 @@ export default function Home() {
       {/* 顶部状态栏 */}
       <header className="app-header">
         <div className="app-header-inner">
-          <div className="app-header-top">
-            <div className="app-header-left">
-              <div className="app-logo"><PillIcon size={22} /></div>
-              <div className="app-header-text">
-                <h1 className="app-title">{activeTab === 'home' ? '我的药盒' : activeTab === 'search' ? '搜索药品' : '设置'}</h1>
-                <p className="app-subtitle">{activeTab === 'home' ? `${medicines.length} 种药品 · ${expiredCount} 种过期` : activeTab === 'search' ? '名称 / 功效 / 症状 / 图片' : '数据管理 · AI识别 · 账号'}</p>
-              </div>
+          <div className="app-header-left">
+            <div className="app-header-greeting">
+              {syncToken && <span className="sync-dot"></span>}
+              {syncToken ? '已开启云同步' : new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' })}
             </div>
-            <div className="app-header-right"></div>
+            <h1 className="app-title">{activeTab === 'home' ? '我的药盒' : activeTab === 'search' ? '搜索药品' : '设置'}</h1>
+            <p className="app-subtitle">{activeTab === 'home' ? `${medicines.length} 种药品 · ${expiredCount} 种过期` : activeTab === 'search' ? '名称 / 功效 / 症状 / 图片' : '数据管理 · AI识别 · 账号'}</p>
           </div>
-          {activeTab === 'home' && (
-            <div className="app-stats-row">
-              <div className="app-stat-card"><div className="app-stat-card-num">{medicines.length}</div><div className="app-stat-card-label">药品总数</div></div>
-              <div className="app-stat-card warning"><div className="app-stat-card-num">{expiringCount}</div><div className="app-stat-card-label">即将过期</div></div>
-              <div className="app-stat-card danger"><div className="app-stat-card-num">{expiredCount}</div><div className="app-stat-card-label">已过期</div></div>
-            </div>
-          )}
+          <div className="app-header-right">
+            {activeTab !== 'settings' && (
+              <button className="app-header-btn" onClick={() => setActiveTab('settings')} title="设置">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+              </button>
+            )}
+          </div>
         </div>
       </header>
+
+      {/* Hero 统计卡片 */}
+      {activeTab === 'home' && (
+        <div className="hero-card">
+          <div className="hero-card-inner">
+            <div className="hero-title">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+              药品概览
+            </div>
+            <div className="hero-stats">
+              <div className="hero-stat"><div className="hero-stat-num">{medicines.length}</div><div className="hero-stat-label">药品总数</div></div>
+              <div className="hero-stat warning"><div className="hero-stat-num">{expiringCount}</div><div className="hero-stat-label">即将过期</div></div>
+              <div className="hero-stat danger"><div className="hero-stat-num">{expiredCount}</div><div className="hero-stat-label">已过期</div></div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 内容区域 */}
       <div className="app-content">
@@ -587,19 +664,34 @@ export default function Home() {
               <button className="app-search-ai" onClick={() => { setAiInput(searchQuery); setAiResults([]); setShowAiModal(true); }} title="AI关键词"><SparklesIcon size={18} /></button>
             </div>
 
-            {/* 过期提醒 */}
-            {expiredCount + expiringCount > 0 && (
-              <div className="app-expire-banner" onClick={handleDeleteExpired}>
-                <div className="app-expire-icon"><WarningIcon size={18} /></div>
-                <div className="app-expire-text"><strong>{expiredCount + expiringCount}</strong> 种药品已过期或即将过期，点击清理</div>
-                <div className="app-expire-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+            {/* 即将过期横向滚动 */}
+            {expiringMedicines.length > 0 && (
+              <div style={{ marginBottom: '28px' }}>
+                <div className="section-header">
+                  <h2 className="section-title">即将过期</h2>
+                  <span className="section-count">{expiringMedicines.length} 种</span>
+                </div>
+                <div className="expiring-scroll">
+                  {expiringMedicines.map((med) => {
+                    const exp = getExpireStatus(med.expireDate);
+                    return (
+                      <div key={med.id} className="expiring-card" onClick={() => { setDetailMed(med); setShowDetailModal(true); }}>
+                        <div className="expiring-card-img">
+                          {med.image ? (<img src={med.image} alt={med.name} loading="lazy" />) : (<div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',background:'#fff',color:'#c7d2fe'}}><PillIcon size={28} /></div>)}
+                        </div>
+                        <div className="expiring-card-name">{med.name}</div>
+                        <div className="expiring-card-days"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>{exp.label}</div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
             {/* 药品列表 */}
-            <div className="app-section-header">
-              <h2 className="app-section-title">全部药品</h2>
-              <span className="app-section-count">{filteredMedicines.length} 种</span>
+            <div className="section-header">
+              <h2 className="section-title">全部药品</h2>
+              <span className="section-count">{filteredMedicines.length} 种</span>
             </div>
 
             {filteredMedicines.length === 0 ? (
