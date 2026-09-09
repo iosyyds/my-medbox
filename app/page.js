@@ -91,33 +91,27 @@ export default function Home() {
       const cfg = getAIConfig();
       setAiConfig(cfg);
       setAiConfigDraft({ apiKey: cfg.isDefault ? '' : cfg.apiKey, enabled: cfg.enabled });
-      // 全自动全局同步：本地有数据则上传，本地为空则拉取
-      if (localMeds.length > 0) {
-        // 本地有数据，自动上传到云端
-        fetch(SYNC_API_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token: GLOBAL_SYNC_TOKEN, medicines: localMeds }),
-        }).then(() => {
+      // 全自动全局同步：先拉取云端数据，以云端为准
+      fetch(`${SYNC_API_URL}?token=${encodeURIComponent(GLOBAL_SYNC_TOKEN)}`)
+        .then(r => r.json())
+        .then(data => {
+          if (data.success && data.medicines && data.medicines.length > 0) {
+            // 云端有数据，以云端为准覆盖本地
+            saveMedicines(data.medicines);
+            setMedicines(data.medicines);
+          } else if (localMeds.length > 0) {
+            // 云端无数据但本地有数据，上传到云端
+            fetch(SYNC_API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ token: GLOBAL_SYNC_TOKEN, medicines: localMeds }),
+            }).catch(() => {});
+          }
           const now = new Date().toLocaleString('zh-CN');
           localStorage.setItem(SYNC_TIME_KEY, now);
           setLastSyncTime(now);
-        }).catch(() => {});
-      } else {
-        // 本地为空，从云端拉取
-        fetch(`${SYNC_API_URL}?token=${encodeURIComponent(GLOBAL_SYNC_TOKEN)}`)
-          .then(r => r.json())
-          .then(data => {
-            if (data.success && data.medicines && data.medicines.length > 0) {
-              saveMedicines(data.medicines);
-              setMedicines(data.medicines);
-            }
-            const now = new Date().toLocaleString('zh-CN');
-            localStorage.setItem(SYNC_TIME_KEY, now);
-            setLastSyncTime(now);
-          })
-          .catch(() => {});
-      }
+        })
+        .catch(() => {});
     }
   }, [isAuthenticated]);
 
@@ -258,6 +252,39 @@ export default function Home() {
     } catch (err) { /* 静默失败 */ }
   };
 
+  // 手动立即同步：先上传本地，再拉取云端最新数据覆盖
+  const handleManualSync = async () => {
+    setSyncing(true);
+    try {
+      const localMeds = loadMedicines();
+      // 先上传本地数据
+      if (localMeds.length > 0) {
+        await fetch(SYNC_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token: GLOBAL_SYNC_TOKEN, medicines: localMeds }),
+        });
+      }
+      // 再从云端拉取最新数据
+      const response = await fetch(`${SYNC_API_URL}?token=${encodeURIComponent(GLOBAL_SYNC_TOKEN)}`);
+      const data = await response.json();
+      if (data.success && data.medicines) {
+        saveMedicines(data.medicines);
+        setMedicines(data.medicines);
+        const now = new Date().toLocaleString('zh-CN');
+        localStorage.setItem(SYNC_TIME_KEY, now);
+        setLastSyncTime(now);
+        showToast(`同步成功，共 ${data.medicines.length} 种药品`, 'success');
+      } else {
+        showToast('同步成功，云端暂无数据', 'success');
+      }
+    } catch (err) {
+      showToast('同步失败：网络错误，请检查服务器', 'error');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const stats = useMemo(() => getStats(medicines), [medicines]);
   const expiredCount = stats.expired;
   const expiringCount = stats.expiring;
@@ -388,21 +415,41 @@ export default function Home() {
     } finally { setRecognizing(false); setRecognizeProgress(0); setRecognizeStatus(''); }
   };
 
+  // 验证日期格式是否有效（YYYY-MM-DD）
+  const isValidDate = (dateStr) => {
+    if (!dateStr || typeof dateStr !== 'string') return false;
+    const trimmed = dateStr.trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(trimmed)) return false;
+    const d = new Date(trimmed);
+    return !isNaN(d.getTime()) && d.getFullYear() > 2000 && d.getFullYear() < 2100;
+  };
+
   const handleFillFromRecognition = () => {
     if (aiResult && aiResult.name) {
       const ai = aiResult;
-      setFormData((prev) => ({
-        ...prev,
-        name: prev.name || ai.name || '',
-        type: ai.type ? (ai.type.toLowerCase().includes('处方') ? 'rx' : ai.type.toLowerCase().includes('保健') ? 'health' : ai.type.toLowerCase().includes('外用') ? 'external' : 'otc') : prev.type,
-        effect: prev.effect || ai.effect || '',
-        usage: prev.usage || ai.usage || '',
-        taboo: prev.taboo || ai.taboo || '',
-        factory: prev.factory || ai.factory || '',
-        expireDate: prev.expireDate || ai.expireDate || '',
-        tags: prev.tags || (ai.tags && ai.tags.length > 0 ? ai.tags.join(', ') : ''),
-        note: prev.note || ai.note || '',
-      }));
+      setFormData((prev) => {
+        const next = { ...prev };
+        // 只填充AI识别到的有值字段，空值不覆盖
+        if (ai.name && !prev.name) next.name = ai.name;
+        if (ai.type) {
+          const t = ai.type.toLowerCase();
+          if (t.includes('处方')) next.type = 'rx';
+          else if (t.includes('保健')) next.type = 'health';
+          else if (t.includes('外用')) next.type = 'external';
+          else if (t.includes('非处方') || t.includes('otc')) next.type = 'otc';
+        }
+        if (ai.effect && !prev.effect) next.effect = ai.effect;
+        if (ai.usage && !prev.usage) next.usage = ai.usage;
+        if (ai.taboo && !prev.taboo) next.taboo = ai.taboo;
+        if (ai.factory && !prev.factory) next.factory = ai.factory;
+        // 日期只有验证有效才填充
+        if (ai.expireDate && isValidDate(ai.expireDate) && !prev.expireDate) {
+          next.expireDate = ai.expireDate;
+        }
+        if (ai.tags && ai.tags.length > 0 && !prev.tags) next.tags = ai.tags.join(', ');
+        if (ai.note && !prev.note) next.note = ai.note;
+        return next;
+      });
       showToast(`智谱 AI 识别已填充：${ai.name}`, 'success');
     } else {
       showToast('暂无识别结果，请先拍照识别', 'error');
@@ -418,6 +465,15 @@ export default function Home() {
       note: formData.note.trim(), image: formData.image, imageFeature: formData.imageFeature,
       createdAt: editingMed ? editingMed.createdAt : new Date().toISOString(), updatedAt: new Date().toISOString(),
     };
+    // 重复检测：添加新药品时检查是否有同名药品
+    if (!editingMed) {
+      const duplicate = medicines.find((m) => m.name.trim().toLowerCase() === med.name.trim().toLowerCase());
+      if (duplicate) {
+        if (!confirm(`检测到重复药品：「${duplicate.name}」\n\n是否仍然添加这个药品？`)) {
+          return;
+        }
+      }
+    }
     let newMedicines;
     if (editingMed) { newMedicines = medicines.map((m) => (m.id === editingMed.id ? med : m)); showToast('已更新', 'success'); }
     else { newMedicines = [med, ...medicines]; showToast('添加成功', 'success'); }
@@ -729,9 +785,12 @@ export default function Home() {
                   {lastSyncTime && <span style={{ fontSize: 11, color: 'var(--text-light)' }}>上次同步：{lastSyncTime}</span>}
                 </div>
                 <div className="settings-ai-body">
-                  <p className="form-hint" style={{ fontSize: 13, lineHeight: 1.7 }}>
+                  <p className="form-hint" style={{ fontSize: 13, lineHeight: 1.7, marginBottom: 12 }}>
                     所有设备自动同步同一份药品数据，无需配置任何密钥。添加、修改、删除药品后自动上传，打开页面自动拉取最新数据。手机和电脑数据实时一致。
                   </p>
+                  <button className="btn btn-primary btn-block" onClick={handleManualSync} disabled={syncing}>
+                    {syncing ? '同步中…' : '🔄 立即同步（上传并拉取最新数据）'}
+                  </button>
                 </div>
               </div>
             </div>
