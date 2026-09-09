@@ -84,7 +84,9 @@ export default function Home() {
   useEffect(() => {
     if (isAuthenticated) {
       setMedicines(loadMedicines());
-      setAiConfig(getAIConfig());
+      const cfg = getAIConfig();
+      setAiConfig(cfg);
+      setAiConfigDraft({ apiKey: cfg.isDefault ? '' : cfg.apiKey, enabled: cfg.enabled });
     }
   }, [isAuthenticated]);
 
@@ -165,10 +167,7 @@ export default function Home() {
   // 保存 AI 配置
   const handleSaveAIConfig = () => {
     const cfg = { ...aiConfigDraft };
-    if (cfg.enabled && !cfg.apiKey.trim()) {
-      showToast('请填写智谱 API Key', 'error');
-      return;
-    }
+    // 允许留空，留空时使用内置 Key
     saveAIConfig(cfg);
     setAiConfig(cfg);
     showToast(cfg.enabled ? '智谱 AI 识别已启用' : 'AI 识别已关闭', 'success');
@@ -313,6 +312,7 @@ export default function Home() {
         usage: prev.usage || ai.usage || '',
         taboo: prev.taboo || ai.taboo || '',
         factory: prev.factory || ai.factory || '',
+        expireDate: prev.expireDate || ai.expireDate || '',
         tags: prev.tags || (ai.tags && ai.tags.length > 0 ? ai.tags.join(', ') : ''),
         note: prev.note || ai.note || '',
       }));
@@ -595,14 +595,14 @@ export default function Home() {
                 {aiConfigDraft.enabled && (
                   <div className="settings-ai-body">
                     <div className="form-group">
-                      <label className="form-label">智谱 API Key</label>
-                      <input type="password" className="form-input" placeholder="请输入 API Key（格式：ID.secret）" value={aiConfigDraft.apiKey} onChange={(e) => setAiConfigDraft((prev) => ({ ...prev, apiKey: e.target.value }))} />
-                      <p className="form-hint"><a href={getAISignupUrl()} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>点此免费申请智谱 API Key</a> · Key 仅保存在本地浏览器</p>
+                      <label className="form-label">智谱 API Key（已内置，可自定义）</label>
+                      <input type="password" className="form-input" placeholder="留空使用内置 Key，或输入自定义 Key" value={aiConfigDraft.apiKey} onChange={(e) => setAiConfigDraft((prev) => ({ ...prev, apiKey: e.target.value }))} />
+                      <p className="form-hint">已内置默认 Key，所有设备打开即可用；如需使用自己的 Key，<a href={getAISignupUrl()} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>点此免费申请</a></p>
                     </div>
-                    <button className="btn btn-primary btn-block btn-sm" onClick={handleSaveAIConfig} style={{ marginTop: 8 }}>保存并启用</button>
+                    <button className="btn btn-primary btn-block btn-sm" onClick={handleSaveAIConfig} style={{ marginTop: 8 }}>保存设置</button>
                   </div>
                 )}
-                {!aiConfigDraft.enabled && (<p className="settings-ai-hint">启用后，拍照将直接调用智谱 GLM-4V 多模态 AI 识别药品信息，准确度更高。API Key 仅保存在本地浏览器。</p>)}
+                {!aiConfigDraft.enabled && (<p className="settings-ai-hint">AI 已内置默认 Key，启用后拍照将直接调用智谱 GLM-4V 识别药品信息（名称、功效、用法、保质期等），所有设备通用。</p>)}
               </div>
             </div>
 
