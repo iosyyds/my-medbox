@@ -611,46 +611,47 @@ export default function Home() {
 
   return (
     <main className="app-main">
-      {/* 顶部状态栏 */}
+      {/* 固定顶栏（三个页面统一） */}
       <header className="app-header">
         <div className="app-header-inner">
           <div className="app-header-left">
-            <div className="app-header-greeting">
-              {syncToken && <span className="sync-dot"></span>}
-              {syncToken ? '已开启云同步' : new Date().toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'long' })}
+            <div className="app-header-logo"><PillIcon size={20} /></div>
+            <div className="app-header-text">
+              <h1 className="app-title">{activeTab === 'home' ? '我的药盒' : activeTab === 'search' ? '搜索药品' : '设置'}</h1>
+              <p className="app-subtitle">{activeTab === 'home' ? `${medicines.length} 种药品 · ${expiredCount} 种过期` : activeTab === 'search' ? '名称 / 功效 / 症状 / 图片' : '数据管理 · AI识别 · 同步'}</p>
             </div>
-            <h1 className="app-title">{activeTab === 'home' ? '我的药盒' : activeTab === 'search' ? '搜索药品' : '设置'}</h1>
-            <p className="app-subtitle">{activeTab === 'home' ? `${medicines.length} 种药品 · ${expiredCount} 种过期` : activeTab === 'search' ? '名称 / 功效 / 症状 / 图片' : '数据管理 · AI识别 · 账号'}</p>
           </div>
           <div className="app-header-right">
+            {syncToken && (
+              <div className="app-header-sync"><span className="dot"></span>已同步</div>
+            )}
             {activeTab !== 'settings' && (
               <button className="app-header-btn" onClick={() => setActiveTab('settings')} title="设置">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
               </button>
             )}
           </div>
         </div>
       </header>
 
-      {/* Hero 统计卡片 */}
-      {activeTab === 'home' && (
-        <div className="hero-card">
-          <div className="hero-card-inner">
-            <div className="hero-title">
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
-              药品概览
-            </div>
-            <div className="hero-stats">
-              <div className="hero-stat"><div className="hero-stat-num">{medicines.length}</div><div className="hero-stat-label">药品总数</div></div>
-              <div className="hero-stat warning"><div className="hero-stat-num">{expiringCount}</div><div className="hero-stat-label">即将过期</div></div>
-              <div className="hero-stat danger"><div className="hero-stat-num">{expiredCount}</div><div className="hero-stat-label">已过期</div></div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* 内容区域 */}
       <div className="app-content">
+        {/* Hero 统计卡片 */}
+        {activeTab === 'home' && (
+          <div className="hero-card">
+            <div className="hero-card-inner">
+              <div className="hero-title">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                药品概览
+              </div>
+              <div className="hero-stats">
+                <div className="hero-stat"><div className="hero-stat-num">{medicines.length}</div><div className="hero-stat-label">药品总数</div></div>
+                <div className="hero-stat warning"><div className="hero-stat-num">{expiringCount}</div><div className="hero-stat-label">即将过期</div></div>
+                <div className="hero-stat danger"><div className="hero-stat-num">{expiredCount}</div><div className="hero-stat-label">已过期</div></div>
+              </div>
+            </div>
+          </div>
+        )}
         {/* ===== 首页 - 药品列表 ===== */}
         {activeTab === 'home' && (
           <div className="tab-content">
@@ -823,16 +824,17 @@ export default function Home() {
                   <div className="form-group">
                     <label className="form-label">同步密钥（所有设备用同一个密钥才能同步）</label>
                     <input type="text" className="form-input" placeholder="如：my-medbox-2024" value={syncTokenDraft} onChange={(e) => setSyncTokenDraft(e.target.value)} />
-                    <p className="form-hint">自己设置一个密钥，手机和电脑用同一个密钥，就能跨设备同步药品数据</p>
+                    <p className="form-hint">自己设置一个密钥，手机和电脑用同一个密钥，添加/修改/删除药品后自动同步，无需手动操作</p>
                   </div>
                   <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
-                    <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={handleSaveSyncToken} disabled={syncing}>保存密钥</button>
-                    <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={handleSyncUpload} disabled={syncing || !syncToken}>
-                      {syncing ? '同步中…' : '↑ 上传到云端'}
+                    <button className="btn btn-primary btn-sm" style={{ flex: 1 }} onClick={handleSaveSyncToken} disabled={syncing}>
+                      {syncing ? '保存中…' : syncToken ? '更新密钥' : '保存密钥并开启同步'}
                     </button>
-                    <button className="btn btn-primary btn-sm" style={{ flex: 1, background: 'var(--purple-gradient)' }} onClick={handleSyncDownload} disabled={syncing || !syncToken}>
-                      {syncing ? '同步中…' : '↓ 从云端拉取'}
-                    </button>
+                    {syncToken && (
+                      <button className="btn btn-secondary btn-sm" style={{ flex: 1 }} onClick={() => { localStorage.removeItem(SYNC_TOKEN_KEY); setSyncToken(''); setSyncTokenDraft(''); showToast('已关闭同步', 'success'); }}>
+                        关闭同步
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
