@@ -102,6 +102,13 @@ export default function Home() {
       lastTouchEnd = now;
     };
     document.addEventListener('touchend', preventDoubleTap, { passive: false });
+    const preventContextMenu = (e) => {
+      const target = e.target;
+      if (target && (target.tagName === 'IMG' || target.closest('.modal'))) {
+        e.preventDefault();
+      }
+    };
+    document.addEventListener('contextmenu', preventContextMenu);
     return () => {
       document.removeEventListener('gesturestart', preventGesture);
       document.removeEventListener('gesturechange', preventGesture);
@@ -109,6 +116,7 @@ export default function Home() {
       document.removeEventListener('touchmove', preventTouchZoom);
       document.removeEventListener('touchstart', preventTouchZoom);
       document.removeEventListener('touchend', preventDoubleTap);
+      document.removeEventListener('contextmenu', preventContextMenu);
     };
   }, []);
 
