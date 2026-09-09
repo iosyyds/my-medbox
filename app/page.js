@@ -14,6 +14,7 @@ import {
 import { compressImage, computeImageHash, searchByImage } from '@/lib/imageUtils';
 import { generateKeywords } from '@/lib/keywords';
 import { recognizeMedicine, preloadOCR } from '@/lib/ocr';
+import { recognizeMedicineWithAI, getAIConfig, saveAIConfig, isAIEnabled, getProviderName, getProviderSignupUrl } from '@/lib/aiApi';
 
 function useDebounce(value, delay = 300) {
   const [debouncedValue, setDebouncedValue] = useState(value);
@@ -64,6 +65,9 @@ export default function Home() {
   const [editingRecognizedText, setEditingRecognizedText] = useState(false);
   const [recognizedTextDraft, setRecognizedTextDraft] = useState('');
   const [importing, setImporting] = useState(false);
+  const [aiResult, setAiResult] = useState(null);
+  const [aiConfig, setAiConfig] = useState({ provider: '', apiKey: '', enabled: false });
+  const [aiConfigDraft, setAiConfigDraft] = useState({ provider: '', apiKey: '', enabled: false });
 
   const [formData, setFormData] = useState({
     name: '', type: 'otc', expireDate: '', effect: '', usage: '',
@@ -86,6 +90,7 @@ export default function Home() {
   useEffect(() => {
     if (isAuthenticated) {
       setMedicines(loadMedicines());
+      setAiConfig(getAIConfig());
       setTimeout(() => preloadOCR(), 1500);
     }
   }, [isAuthenticated]);
@@ -156,6 +161,24 @@ export default function Home() {
     localStorage.removeItem(_ak);
     setIsAuthenticated(false); setMedicines([]);
     showToast('已退出登录');
+  };
+
+  // 打开设置时同步 AI 配置草稿
+  const openSettings = () => {
+    setAiConfigDraft({ ...aiConfig });
+    openSettings();
+  };
+
+  // 保存 AI 配置
+  const handleSaveAIConfig = () => {
+    const cfg = { ...aiConfigDraft };
+    if (cfg.enabled && (!cfg.provider || !cfg.apiKey.trim())) {
+      showToast('请选择 AI 服务商并填写 API Key', 'error');
+      return;
+    }
+    saveAIConfig(cfg);
+    setAiConfig(cfg);
+    showToast(cfg.enabled ? `AI 识别已启用（${getProviderName(cfg.provider)}）` : 'AI 识别已关闭', 'success');
   };
 
   const stats = useMemo(() => getStats(medicines), [medicines]);
@@ -229,26 +252,53 @@ export default function Home() {
       const compressed = await compressImage(file);
       const feature = await computeImageHash(compressed);
       setFormData((prev) => ({ ...prev, image: compressed, imageFeature: feature }));
-      showToast('图片上传成功，正在识别…', 'success');
       setRecognizing(true); setRecognizeProgress(0); setRecognizeStatus('开始识别');
-      setRecognizedText(''); setRecognizeError(''); setMatchedMedicine(null); setExtractedInfo(null); setRecognizeQuality(0);
+      setRecognizedText(''); setRecognizeError(''); setMatchedMedicine(null); setExtractedInfo(null); setRecognizeQuality(0); setAiResult(null);
       try {
-        const result = await recognizeMedicine(compressed, (progress, status) => {
-          setRecognizeProgress(Math.round(progress * 100)); setRecognizeStatus(status);
-        });
-        setRecognizedText(result.text);
-        setRecognizeQuality(result.quality || 0);
-        if (result.medicine) {
-          setMatchedMedicine(result.medicine);
-          showToast(`识别成功：${result.medicine.name}，点击一键填充`, 'success');
-        } else {
-          const { extractInfoFromText } = await import('@/lib/medicineDB');
-          const extracted = extractInfoFromText(result.text);
-          if (extracted && (extracted.name || extracted.effect)) {
-            setExtractedInfo(extracted);
-            showToast('识别完成，点击一键填充', '');
+        if (isAIEnabled()) {
+          showToast('AI 识别中，请稍候…', 'success');
+          const aiData = await recognizeMedicineWithAI(compressed, (status) => {
+            setRecognizeStatus(status || 'AI 识别中…');
+            setRecognizeProgress(50);
+          });
+          setRecognizeProgress(100);
+          if (aiData && aiData.name && aiData.name !== '无法识别') {
+            setAiResult(aiData);
+            showToast(`AI 识别成功：${aiData.name}，点击一键填充`, 'success');
           } else {
-            showToast('识别结果不清晰，建议手动填写或编辑识别文字', '');
+            setRecognizeError('AI 未能识别出药品信息，已切换到本地识别');
+            // AI 失败，回退到本地 OCR
+            const result = await recognizeMedicine(compressed, (progress, status) => {
+              setRecognizeProgress(Math.round(progress * 100)); setRecognizeStatus(status);
+            });
+            setRecognizedText(result.text);
+            setRecognizeQuality(result.quality || 0);
+            if (result.medicine) { setMatchedMedicine(result.medicine); showToast(`识别成功：${result.medicine.name}`, 'success'); }
+            else {
+              const { extractInfoFromText } = await import('@/lib/medicineDB');
+              const extracted = extractInfoFromText(result.text);
+              if (extracted && (extracted.name || extracted.effect)) setExtractedInfo(extracted);
+            }
+          }
+        } else {
+          showToast('图片上传成功，正在识别…', 'success');
+          const result = await recognizeMedicine(compressed, (progress, status) => {
+            setRecognizeProgress(Math.round(progress * 100)); setRecognizeStatus(status);
+          });
+          setRecognizedText(result.text);
+          setRecognizeQuality(result.quality || 0);
+          if (result.medicine) {
+            setMatchedMedicine(result.medicine);
+            showToast(`识别成功：${result.medicine.name}，点击一键填充`, 'success');
+          } else {
+            const { extractInfoFromText } = await import('@/lib/medicineDB');
+            const extracted = extractInfoFromText(result.text);
+            if (extracted && (extracted.name || extracted.effect)) {
+              setExtractedInfo(extracted);
+              showToast('识别完成，点击一键填充', '');
+            } else {
+              showToast('识别结果不清晰，建议手动填写或编辑识别文字', '');
+            }
           }
         }
       } catch (err) {
@@ -261,26 +311,64 @@ export default function Home() {
   const handleReRecognize = async () => {
     if (!formData.image || recognizing) return;
     setRecognizing(true); setRecognizeProgress(0); setRecognizeStatus('开始识别');
-    setRecognizedText(''); setRecognizeError(''); setMatchedMedicine(null); setExtractedInfo(null); setRecognizeQuality(0);
+    setRecognizedText(''); setRecognizeError(''); setMatchedMedicine(null); setExtractedInfo(null); setRecognizeQuality(0); setAiResult(null);
     try {
-      const result = await recognizeMedicine(formData.image, (progress, status) => {
-        setRecognizeProgress(Math.round(progress * 100)); setRecognizeStatus(status);
-      });
-      setRecognizedText(result.text);
-      setRecognizeQuality(result.quality || 0);
-      if (result.medicine) { setMatchedMedicine(result.medicine); showToast('识别成功', 'success'); }
-      else {
-        const { extractInfoFromText } = await import('@/lib/medicineDB');
-        const extracted = extractInfoFromText(result.text);
-        if (extracted && (extracted.name || extracted.effect)) setExtractedInfo(extracted);
-        else showToast('识别结果不清晰，建议手动填写', '');
+      if (isAIEnabled()) {
+        const aiData = await recognizeMedicineWithAI(formData.image, (status) => {
+          setRecognizeStatus(status || 'AI 识别中…');
+          setRecognizeProgress(50);
+        });
+        setRecognizeProgress(100);
+        if (aiData && aiData.name && aiData.name !== '无法识别') {
+          setAiResult(aiData);
+          showToast(`AI 识别成功：${aiData.name}`, 'success');
+        } else {
+          showToast('AI 识别失败，已切换本地识别', '');
+          const result = await recognizeMedicine(formData.image, (progress, status) => {
+            setRecognizeProgress(Math.round(progress * 100)); setRecognizeStatus(status);
+          });
+          setRecognizedText(result.text); setRecognizeQuality(result.quality || 0);
+          if (result.medicine) setMatchedMedicine(result.medicine);
+          else {
+            const { extractInfoFromText } = await import('@/lib/medicineDB');
+            const extracted = extractInfoFromText(result.text);
+            if (extracted && (extracted.name || extracted.effect)) setExtractedInfo(extracted);
+          }
+        }
+      } else {
+        const result = await recognizeMedicine(formData.image, (progress, status) => {
+          setRecognizeProgress(Math.round(progress * 100)); setRecognizeStatus(status);
+        });
+        setRecognizedText(result.text);
+        setRecognizeQuality(result.quality || 0);
+        if (result.medicine) { setMatchedMedicine(result.medicine); showToast('识别成功', 'success'); }
+        else {
+          const { extractInfoFromText } = await import('@/lib/medicineDB');
+          const extracted = extractInfoFromText(result.text);
+          if (extracted && (extracted.name || extracted.effect)) setExtractedInfo(extracted);
+          else showToast('识别结果不清晰，建议手动填写', '');
+        }
       }
     } catch (err) { setRecognizeError(err.message || '识别失败'); showToast('识别失败', 'error'); }
     finally { setRecognizing(false); setRecognizeProgress(0); setRecognizeStatus(''); }
   };
 
   const handleFillFromRecognition = () => {
-    if (matchedMedicine) {
+    if (aiResult && aiResult.name) {
+      const ai = aiResult;
+      setFormData((prev) => ({
+        ...prev,
+        name: prev.name || ai.name || '',
+        type: ai.type ? (ai.type.toLowerCase().includes('处方') ? 'rx' : ai.type.toLowerCase().includes('保健') ? 'health' : ai.type.toLowerCase().includes('外用') ? 'external' : 'otc') : prev.type,
+        effect: prev.effect || ai.effect || '',
+        usage: prev.usage || ai.usage || '',
+        taboo: prev.taboo || ai.taboo || '',
+        factory: prev.factory || ai.factory || '',
+        tags: prev.tags || (ai.tags && ai.tags.length > 0 ? ai.tags.join(', ') : ''),
+        note: prev.note || ai.note || '',
+      }));
+      showToast(`AI 识别已填充：${ai.name}`, 'success');
+    } else if (matchedMedicine) {
       const med = matchedMedicine;
       setFormData((prev) => ({
         ...prev, name: prev.name || med.name, type: med.type || prev.type,
@@ -564,7 +652,23 @@ export default function Home() {
                     <p className="recognize-hint">AI正在识别药盒文字并匹配药品信息…</p>
                   </div>
                 )}
-                {(matchedMedicine || extractedInfo) && !recognizing && (
+                {aiResult && !recognizing && (
+                  <div className="recognize-result ai-result">
+                    <div className="recognize-result-header">
+                      <div className="recognize-result-icon ai-icon"><SparklesIcon size={16} /></div>
+                      <div className="recognize-result-info">
+                        <div className="recognize-result-title">AI 识别：{aiResult.name}</div>
+                        <div className="recognize-result-sub">{aiResult.effect ? aiResult.effect.substring(0, 50) + (aiResult.effect.length > 50 ? '…' : '') : '点击下方按钮自动填充全部信息'}</div>
+                      </div>
+                      <span className="recognize-quality-badge ai-badge">AI</span>
+                    </div>
+                    {aiResult.tags && aiResult.tags.length > 0 && (
+                      <div className="ai-result-tags">{aiResult.tags.slice(0, 4).map((t, i) => (<span key={i} className="med-tag">{t}</span>))}</div>
+                    )}
+                    <button className="btn-auto-fill" onClick={handleFillFromRecognition}><ZapIcon size={15} />AI 一键填充全部信息</button>
+                  </div>
+                )}
+                {(matchedMedicine || extractedInfo) && !recognizing && !aiResult && (
                   <div className="recognize-result">
                     <div className="recognize-result-header">
                       <div className="recognize-result-icon"><CheckIcon size={16} /></div>
@@ -674,6 +778,48 @@ export default function Home() {
                   <div className="stat-card"><div className="stat-card-num" style={{ color: '#ef4444' }}>{stats.expired}</div><div className="stat-card-label">已过期</div></div>
                   <div className="stat-card"><div className="stat-card-num" style={{ color: '#f59e0b' }}>{stats.expiring}</div><div className="stat-card-label">即将过期</div></div>
                   <div className="stat-card"><div className="stat-card-num">{stats.totalImageSizeMB}</div><div className="stat-card-label">图片(MB)</div></div>
+                </div>
+              </div>
+              <div className="settings-section">
+                <div className="settings-section-title">AI 药品识别</div>
+                <div className="ai-config-card">
+                  <div className="ai-config-header">
+                    <div className="ai-config-status">
+                      <span className={`ai-status-dot ${aiConfig.enabled ? 'active' : ''}`}></span>
+                      <span className="ai-status-text">{aiConfig.enabled ? `已启用 · ${getProviderName(aiConfig.provider)}` : '未启用'}</span>
+                    </div>
+                    <label className="ai-switch">
+                      <input type="checkbox" checked={aiConfigDraft.enabled} onChange={(e) => setAiConfigDraft((prev) => ({ ...prev, enabled: e.target.checked }))} />
+                      <span className="ai-switch-slider"></span>
+                    </label>
+                  </div>
+                  {aiConfigDraft.enabled && (
+                    <div className="ai-config-body">
+                      <div className="form-group">
+                        <label className="form-label">选择 AI 服务商</label>
+                        <select className="form-select" value={aiConfigDraft.provider} onChange={(e) => setAiConfigDraft((prev) => ({ ...prev, provider: e.target.value }))}>
+                          <option value="">请选择…</option>
+                          <option value="zhipu">智谱 GLM-4V（国内直连，推荐）</option>
+                          <option value="gemini">Google Gemini（需科学上网）</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">API Key</label>
+                        <input type="password" className="form-input" placeholder="请输入 API Key" value={aiConfigDraft.apiKey} onChange={(e) => setAiConfigDraft((prev) => ({ ...prev, apiKey: e.target.value }))} />
+                        {aiConfigDraft.provider && (
+                          <p className="form-hint">
+                            <a href={getProviderSignupUrl(aiConfigDraft.provider)} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>
+                              点此免费申请 {getProviderName(aiConfigDraft.provider)} API Key
+                            </a>
+                          </p>
+                        )}
+                      </div>
+                      <button className="btn btn-primary btn-block btn-sm" onClick={handleSaveAIConfig} style={{ marginTop: 8 }}>保存 AI 配置</button>
+                    </div>
+                  )}
+                  {!aiConfigDraft.enabled && (
+                    <p className="ai-config-hint">启用后，拍照将直接调用 AI 多模态模型识别药品信息，准确度更高。API Key 仅保存在本地浏览器。</p>
+                  )}
                 </div>
               </div>
               <div className="settings-section">
