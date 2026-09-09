@@ -87,13 +87,11 @@ export default function Home() {
 
   // 强制阻止手机端缩放和横向拖动
   useEffect(() => {
-    // 阻止 iOS 手势缩放
     const preventGesture = (e) => e.preventDefault();
     document.addEventListener('gesturestart', preventGesture);
     document.addEventListener('gesturechange', preventGesture);
     document.addEventListener('gestureend', preventGesture);
 
-    // 阻止双指触摸缩放
     const preventTouchZoom = (e) => {
       if (e.touches.length > 1) {
         e.preventDefault();
@@ -102,7 +100,6 @@ export default function Home() {
     document.addEventListener('touchmove', preventTouchZoom, { passive: false });
     document.addEventListener('touchstart', preventTouchZoom, { passive: false });
 
-    // 阻止双击缩放
     let lastTouchEnd = 0;
     const preventDoubleTap = (e) => {
       const now = Date.now();
@@ -237,7 +234,6 @@ export default function Home() {
       setFormData((prev) => ({ ...prev, image: compressed, imageFeature: feature }));
       showToast('图片上传成功，正在识别药品…', 'success');
 
-      // 自动识别药品信息
       setRecognizing(true);
       setRecognizeProgress(0);
       setRecognizeStatus('开始识别');
@@ -255,11 +251,9 @@ export default function Home() {
         setRecognizedText(result.text);
 
         if (result.medicine) {
-          // 匹配到知识库药品，保存但不自动填充，等用户点一键填充
           setMatchedMedicine(result.medicine);
           showToast(`识别成功：${result.medicine.name}，点击「一键填充」填入信息`, 'success');
         } else {
-          // 没匹配到知识库，尝试从识别文字中提取信息
           const { extractInfoFromText } = await import('@/lib/medicineDB');
           const extracted = extractInfoFromText(result.text);
           if (extracted) {
@@ -284,7 +278,7 @@ export default function Home() {
     e.target.value = '';
   };
 
-  // 手动重新识别（基于已上传的图片）
+  // 手动重新识别
   const handleReRecognize = async () => {
     if (!formData.image || recognizing) return;
     setRecognizing(true);
@@ -334,21 +328,26 @@ export default function Home() {
       setFormData((prev) => ({
         ...prev,
         name: prev.name || med.name,
-        type: med.type,
-        effect: prev.effect || med.effect,
-        usage: prev.usage || med.usage,
-        taboo: prev.taboo || med.taboo,
-        factory: prev.factory || med.factory,
-        tags: prev.tags || med.tags.join(', '),
+        type: med.type || prev.type,
+        effect: prev.effect || med.effect || '',
+        usage: prev.usage || med.usage || '',
+        taboo: prev.taboo || med.taboo || '',
+        factory: prev.factory || med.factory || '',
+        tags: prev.tags || (med.tags ? med.tags.join(', ') : ''),
+        note: prev.note || '',
       }));
       showToast(`已填充：${med.name} 的药品信息`, 'success');
     } else if (extractedInfo) {
       setFormData((prev) => ({
         ...prev,
-        name: prev.name || extractedInfo.name,
-        effect: prev.effect || extractedInfo.effect,
-        usage: prev.usage || extractedInfo.usage,
-        note: prev.note || extractedInfo.note,
+        name: prev.name || extractedInfo.name || '',
+        type: extractedInfo.type || prev.type,
+        effect: prev.effect || extractedInfo.effect || '',
+        usage: prev.usage || extractedInfo.usage || '',
+        taboo: prev.taboo || extractedInfo.taboo || '',
+        factory: prev.factory || extractedInfo.factory || '',
+        tags: prev.tags || (extractedInfo.tags && extractedInfo.tags.length > 0 ? extractedInfo.tags.join(', ') : ''),
+        note: prev.note || extractedInfo.note || '',
       }));
       showToast('已填充识别到的药品信息', 'success');
     } else {
@@ -430,7 +429,7 @@ export default function Home() {
     showToast(`已搜索：${keyword}`, 'success');
   };
 
-  // 图片搜索（识图）
+  // 图片搜索
   const handleCameraSearch = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -439,7 +438,6 @@ export default function Home() {
     try {
       const compressed = await compressImage(file, 600, 0.6);
       const feature = await computeImageHash(compressed);
-      // 在已记录药品中搜索相似图片
       const results = searchByImage(feature, medicines, 0.4);
       setCameraResults(results);
       if (results.length === 0) {
@@ -704,7 +702,7 @@ export default function Home() {
                   </div>
                 )}
 
-                {/* 识别结果卡片（匹配成功或提取信息后显示） */}
+                {/* 识别结果卡片 */}
                 {(matchedMedicine || extractedInfo) && !recognizing && (
                   <div className="recognize-result">
                     <div className="recognize-result-header">
@@ -746,7 +744,7 @@ export default function Home() {
                   </div>
                 )}
 
-                {/* 识别到的文字（可展开查看） */}
+                {/* 识别到的文字 */}
                 {recognizedText && !recognizing && (
                   <div className="recognized-text">
                     <div className="recognized-text-header">
@@ -1070,7 +1068,7 @@ export default function Home() {
         </div>
       )}
 
-      {/* 图片搜索弹窗（识图） */}
+      {/* 图片搜索弹窗 */}
       {showCameraModal && (
         <div
           className="modal-overlay show"
