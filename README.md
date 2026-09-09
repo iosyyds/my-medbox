@@ -6,58 +6,82 @@
 
 ## 功能特性
 
-- 📷 **拍照存药**：拍照上传药品图片，自动压缩优化
-- 🔍 **智能搜索**：按药名、功效、标签关键词搜索
-- ✨ **AI 关键词**：输入症状自动生成搜索关键词
-- 📸 **以图搜药**：上传图片搜索相似药品
-- 🏷️ **分类管理**：OTC/处方药/保健品/外用药分类
-- ⏰ **过期提醒**：自动识别过期和即将过期药品
-- 🔒 **密码保护**：SHA-256 加密验证，保护隐私
-- 📱 **响应式设计**：手机电脑自适应，移动端优先
+- 拍照上传药品图片，自动压缩优化
+- 完整记录药品信息：名称、功效、用法用量、禁忌、保质期、厂家、标签
+- 智能搜索：支持药名、功效、症状关键词模糊搜索
+- AI关键词生成：输入药名或症状，自动推荐搜索关键词（内置50+常见药品/症状词库）
+- 图片搜药（识图功能）：拍照匹配已记录药品，基于图像感知哈希+颜色直方图算法
+- 过期提醒：自动识别过期/即将过期（30天内），首页横幅+卡片角标
+- 多维度筛选：按有效期状态、药品类型筛选
+- 数据本地存储：localStorage，隐私安全，无网也能用
+- 响应式设计：手机、平板、电脑完美适配，重点优化移动端体验
+- 全部SVG图标：轻量、清晰、可缩放
+- 极速加载：静态导出，图片压缩，无网络也能查看已记录药品
 
 ## 技术栈
 
 - Next.js 14 (App Router)
 - React 18
-- 纯前端静态导出 (output: 'export')
-- Tesseract.js (纯前端 OCR 识别)
-- localStorage 本地存储
-- 全部 SVG 图标
+- 纯CSS（无UI框架依赖）
+- 静态导出 (output: 'export')
+- 数据存储：浏览器 localStorage
+- 图像识别：Canvas 感知哈希(pHash) + 颜色直方图
 
 ## 本地开发
 
 ```bash
+# 安装依赖
 npm install
+
+# 启动开发服务器
 npm run dev
-```
 
-## 构建部署
-
-```bash
+# 构建静态文件
 npm run build
-# 输出在 out/ 目录，可部署到 GitHub Pages
 ```
+
+## 部署到 GitHub Pages
+
+1. Fork 或使用本仓库
+2. 进入仓库 Settings → Pages
+3. Source 选择 **GitHub Actions**
+4. 推送代码后会自动构建部署
+5. 访问 `https://你的用户名.github.io/my-medbox/`
+
+## 识图功能说明
+
+图片搜药功能基于纯前端实现，无需后端API：
+
+1. 上传药品图片后，自动计算图像感知哈希(pHash)和颜色直方图特征
+2. 保存药品时，图像特征一并存储
+3. 搜索时，计算上传图片的特征，与已存储特征进行相似度比对
+4. 返回相似度大于40%的药品，按相似度排序
+
+> 注意：识图准确度受图片质量、角度、光线影响，建议拍摄药盒正面清晰照片。
+
+## 数据安全
+
+- 所有数据仅存储在你自己的浏览器中，不上传任何服务器
+- 清除浏览器数据会导致记录丢失，建议定期截图备份重要信息
+- 更换设备或浏览器后数据不会同步，需重新录入
 
 ## 项目结构
 
 ```
-medbox-next/
-├── app/
-│   ├── page.js          # 主页面
-│   ├── layout.js        # 布局
-│   └── globals.css      # 全局样式
+my-medbox/
+├── app/                    # Next.js App Router
+│   ├── layout.js          # 根布局
+│   ├── page.js            # 主页面（所有交互逻辑）
+│   └── globals.css        # 全局样式
 ├── components/
-│   └── Icons.jsx        # SVG 图标组件
+│   └── Icons.jsx          # SVG图标组件库
 ├── lib/
-│   ├── storage.js       # 本地存储
-│   ├── medicineDB.js    # 药品知识库
-│   ├── ocr.js           # OCR 识别
-│   ├── imageUtils.js    # 图片处理
-│   └── keywords.js      # 关键词生成
-├── public/
-│   └── CNAME            # 自定义域名
-├── .github/workflows/
-│   └── deploy.yml       # GitHub Actions 部署
+│   ├── storage.js         # 数据存储工具
+│   ├── imageUtils.js      # 图片处理+识图算法
+│   └── keywords.js        # AI关键词词库
+├── public/                # 静态资源
+├── .github/workflows/     # GitHub Actions部署
+├── next.config.js         # Next.js配置
 └── package.json
 ```
 

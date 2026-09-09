@@ -151,6 +151,37 @@ export const ScanIcon = ({ size, className, ...props }) => (
   </Icon>
 );
 
+export const FilterIcon = ({ size, className, ...props }) => (
+  <Icon size={size} className={className} {...props}>
+    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+  </Icon>
+);
+
+export const ChevronDownIcon = ({ size, className, ...props }) => (
+  <Icon size={size} className={className} {...props}>
+    <path d="m6 9 6 6 6-6" />
+  </Icon>
+);
+
+export const InfoIcon = ({ size, className, ...props }) => (
+  <Icon size={size} className={className} {...props}>
+    <circle cx="12" cy="12" r="10" />
+    <path d="M12 16v-4M12 8h.01" />
+  </Icon>
+);
+
+export const HeartIcon = ({ size, className, ...props }) => (
+  <Icon size={size} className={className} {...props}>
+    <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" />
+  </Icon>
+);
+
+export const ShieldIcon = ({ size, className, ...props }) => (
+  <Icon size={size} className={className} {...props}>
+    <path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z" />
+  </Icon>
+);
+
 export const ZapIcon = ({ size, className, ...props }) => (
   <Icon size={size} className={className} {...props}>
     <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
