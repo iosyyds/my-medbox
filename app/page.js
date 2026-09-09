@@ -39,6 +39,16 @@ import { generateKeywords } from '@/lib/keywords';
 import { recognizeMedicine } from '@/lib/ocr';
 
 export default function Home() {
+  // 密码保护配置（SHA-256 哈希，密码：0527）
+  const PASSWORD_HASH = 'b1b5efd1a6cb804d54dd3d7c418a71e8a4153351b7e54b8ccafb3e6a746d0e69';
+  const AUTH_KEY = 'medbox_auth_v1';
+
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+
   const [medicines, setMedicines] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentFilter, setCurrentFilter] = useState('all');
@@ -80,10 +90,25 @@ export default function Home() {
   const fileInputRef = useRef(null);
   const cameraFileInputRef = useRef(null);
 
-  // 初始化加载数据
+  // 检查登录状态
   useEffect(() => {
-    setMedicines(loadMedicines());
+    try {
+      const auth = localStorage.getItem(AUTH_KEY);
+      if (auth === 'authenticated') {
+        setIsAuthenticated(true);
+      }
+    } catch (e) {
+      console.error('读取登录状态失败:', e);
+    }
+    setCheckingAuth(false);
   }, []);
+
+  // 初始化加载数据（仅登录后加载）
+  useEffect(() => {
+    if (isAuthenticated) {
+      setMedicines(loadMedicines());
+    }
+  }, [isAuthenticated]);
 
   // 强制阻止手机端缩放和横向拖动
   useEffect(() => {
@@ -125,6 +150,50 @@ export default function Home() {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type: '' }), 2500);
   }, []);
+
+  // 密码哈希（SHA-256）
+  const hashPassword = async (password) => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(password);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+  };
+
+  // 处理登录
+  const handleLogin = async (e) => {
+    if (e) e.preventDefault();
+    if (!passwordInput.trim()) {
+      setPasswordError('请输入密码');
+      return;
+    }
+    setPasswordLoading(true);
+    setPasswordError('');
+    try {
+      const hash = await hashPassword(passwordInput.trim());
+      if (hash === PASSWORD_HASH) {
+        localStorage.setItem(AUTH_KEY, 'authenticated');
+        setIsAuthenticated(true);
+        setPasswordInput('');
+        showToast('登录成功', 'success');
+      } else {
+        setPasswordError('密码错误，请重试');
+      }
+    } catch (err) {
+      setPasswordError('验证失败，请重试');
+    } finally {
+      setPasswordLoading(false);
+    }
+  };
+
+  // 处理退出登录
+  const handleLogout = () => {
+    if (!confirm('确定要退出登录吗？')) return;
+    localStorage.removeItem(AUTH_KEY);
+    setIsAuthenticated(false);
+    setMedicines([]);
+    showToast('已退出登录');
+  };
 
   // 过滤后的药品列表
   const filteredMedicines = medicines
@@ -466,6 +535,57 @@ export default function Home() {
     { key: 'rx', label: '处方药' },
   ];
 
+  // 加载中
+  if (checkingAuth) {
+    return (
+      <main>
+        <div className="auth-loading">
+          <div className="spinner"></div>
+          <p>正在加载…</p>
+        </div>
+      </main>
+    );
+  }
+
+  // 未登录 - 显示密码输入界面
+  if (!isAuthenticated) {
+    return (
+      <main>
+        <div className="auth-page">
+          <div className="auth-card">
+            <div className="auth-icon">
+              <ShieldIcon size={48} />
+            </div>
+            <h1 className="auth-title">我的药盒</h1>
+            <p className="auth-sub">请输入密码访问</p>
+            <form onSubmit={handleLogin} className="auth-form">
+              <div className="auth-input-wrap">
+                <input
+                  type="password"
+                  className="auth-input"
+                  placeholder="请输入密码"
+                  value={passwordInput}
+                  onChange={(e) => {
+                    setPasswordInput(e.target.value);
+                    setPasswordError('');
+                  }}
+                  autoFocus
+                  inputMode="numeric"
+                />
+              </div>
+              {passwordError && <p className="auth-error">{passwordError}</p>}
+              <button type="submit" className="auth-btn" disabled={passwordLoading}>
+                {passwordLoading ? '验证中…' : '进入'}
+              </button>
+            </form>
+            <p className="auth-hint">数据仅保存在本地浏览器</p>
+          </div>
+        </div>
+        <div className={`toast ${toast.show ? 'show' : ''} ${toast.type}`}>{toast.message}</div>
+      </main>
+    );
+  }
+
   return (
     <main>
       {/* 顶部导航 */}
@@ -492,6 +612,9 @@ export default function Home() {
                 </div>
                 <div className="stat-label">过期</div>
               </div>
+              <button className="logout-btn" onClick={handleLogout} title="退出登录">
+                <ShieldIcon size={16} />
+              </button>
             </div>
           </div>
 
