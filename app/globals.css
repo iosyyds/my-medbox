@@ -964,7 +964,14 @@ img { max-width: 100%; display: block; }
   to { transform: translateY(0); opacity: 1; }
 }
 .modal-overlay { touch-action: pan-y; overflow-x: hidden !important; }
-.modal-body { overflow-x: hidden !important; touch-action: pan-y; overflow-y: auto; scrollbar-width: none; -ms-overflow-style: none; }
+.modal-body {
+  padding: 22px;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
 .modal-body::-webkit-scrollbar { display: none; width: 0; height: 0; }
 .modal img { -webkit-user-drag: none; user-drag: none; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none; pointer-events: none; }
 .modal * { -webkit-touch-callout: none; }
@@ -975,8 +982,7 @@ img { max-width: 100%; display: block; }
   justify-content: space-between;
   padding: 18px 22px;
   border-bottom: 1px solid var(--border-light);
-  position: sticky;
-  top: 0;
+  flex-shrink: 0;
   background: var(--card);
   z-index: 10;
 }
@@ -1019,6 +1025,7 @@ img { max-width: 100%; display: block; }
   padding: 16px 22px;
   border-top: 1px solid var(--border-light);
   background: var(--card);
+  flex-shrink: 0;
   position: sticky;
   bottom: 0;
 }
