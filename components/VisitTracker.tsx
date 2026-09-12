@@ -13,11 +13,9 @@ export default function VisitTracker() {
       localStorage.setItem("device_id", deviceId);
     }
 
-    // 获取当前页面路径
-    const page = window.location.pathname;
-
-    // 上报访问记录
+    // 上报访问和心跳（合并到一个接口）
     const reportVisit = () => {
+      const page = window.location.pathname;
       fetch(API_BASE + "visit/log", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -25,24 +23,18 @@ export default function VisitTracker() {
           page: page,
           device_id: deviceId,
         }),
-      }).catch(() => {});
+      }).then(r => r.json()).catch(e => {
+        // 静默失败
+      });
     };
 
-    // 页面加载时上报
+    // 页面加载时立即上报
     reportVisit();
 
-    // 每30秒心跳一次，更新在线状态
-    const heartbeat = setInterval(() => {
-      fetch(API_BASE + "online/heartbeat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          device_id: deviceId,
-        }),
-      }).catch(() => {});
-    }, 30000);
+    // 每30秒上报一次
+    const timer = setInterval(reportVisit, 30000);
 
-    return () => clearInterval(heartbeat);
+    return () => clearInterval(timer);
   }, []);
 
   return null;
