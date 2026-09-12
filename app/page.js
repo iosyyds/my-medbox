@@ -60,8 +60,8 @@ export default function Home() {
   const [recognizeError, setRecognizeError] = useState('');
   const [importing, setImporting] = useState(false);
   const [aiResult, setAiResult] = useState(null);
-  const [aiConfig, setAiConfig] = useState({ apiKey: '', enabled: false });
-  const [aiConfigDraft, setAiConfigDraft] = useState({ apiKey: '', enabled: false });
+  const [aiConfig, setAiConfig] = useState({ apiKey: '', enabled: true });
+  const [aiConfigDraft, setAiConfigDraft] = useState({ apiKey: '', enabled: true });
   const [activeTab, setActiveTab] = useState('home');
   const [syncing, setSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState('');
@@ -241,15 +241,22 @@ export default function Home() {
   // 全自动同步上传（静默，数据变化后自动调用）
   const autoSyncUpload = async (meds) => {
     try {
-      await fetch(SYNC_API_URL, {
+      const resp = await fetch(SYNC_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: GLOBAL_SYNC_TOKEN, medicines: meds }),
       });
-      const now = new Date().toLocaleString('zh-CN');
-      localStorage.setItem(SYNC_TIME_KEY, now);
-      setLastSyncTime(now);
-    } catch (err) { /* 静默失败 */ }
+      const data = await resp.json();
+      if (data.success) {
+        const now = new Date().toLocaleString('zh-CN');
+        localStorage.setItem(SYNC_TIME_KEY, now);
+        setLastSyncTime(now);
+      } else {
+        console.warn('自动同步失败:', data.error);
+      }
+    } catch (err) {
+      console.warn('自动同步网络错误:', err);
+    }
   };
 
   // 手动立即同步：先上传本地，再拉取云端最新数据覆盖
@@ -762,14 +769,18 @@ export default function Home() {
                 {aiConfigDraft.enabled && (
                   <div className="settings-ai-body">
                     <div className="form-group">
-                      <label className="form-label">智谱 API Key（已内置，可自定义）</label>
-                      <input type="password" className="form-input" placeholder="留空使用内置 Key，或输入自定义 Key" value={aiConfigDraft.apiKey} onChange={(e) => setAiConfigDraft((prev) => ({ ...prev, apiKey: e.target.value }))} />
-                      <p className="form-hint">已内置默认 Key，所有设备打开即可用；如需使用自己的 Key，<a href={getAISignupUrl()} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'underline' }}>点此免费申请</a></p>
+                      <label className="form-label">智谱 API Key</label>
+                      <input type="text" className="form-input" placeholder="输入你的智谱 API Key" value={aiConfigDraft.apiKey} onChange={(e) => setAiConfigDraft((prev) => ({ ...prev, apiKey: e.target.value }))} />
+                      <p className="form-hint" style={{ lineHeight: 1.6 }}>
+                        如果识别报错"API Key 无效或已过期"，请前往
+                        <a href={getAISignupUrl()} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)', textDecoration: 'underline', margin: '0 4px' }}>智谱开放平台</a>
+                        免费获取 Key，粘贴到此处保存。每个设备都需要单独设置。
+                      </p>
                     </div>
                     <button className="btn btn-primary btn-block btn-sm" onClick={handleSaveAIConfig} style={{ marginTop: 8 }}>保存设置</button>
                   </div>
                 )}
-                {!aiConfigDraft.enabled && (<p className="settings-ai-hint">AI 已内置默认 Key，启用后拍照将直接调用智谱 GLM-4V 识别药品信息（名称、功效、用法、保质期等），所有设备通用。</p>)}
+                {!aiConfigDraft.enabled && (<p className="settings-ai-hint">启用后拍照将调用智谱 GLM-4V 自动识别药品信息（名称、功效、用法、保质期等）</p>)}
               </div>
             </div>
 
